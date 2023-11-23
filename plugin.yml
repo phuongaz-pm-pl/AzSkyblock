@@ -1,0 +1,10 @@
+name: AzSkyblock
+version: 1.0.0
+src-namespace-prefix: phuongaz\azskyblock
+main: phuongaz\azskyblock\AzSkyBlock
+api: 5.0.0
+
+permissions:
+  azskyblock.command:
+    default: true
+    description: Allow use command
