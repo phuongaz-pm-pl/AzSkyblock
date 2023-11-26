@@ -22,13 +22,13 @@ class CustomIsland {
      */
     public function __construct(
         private string $name,
-        private Vector3 $spawnPosition,
-        private Vector3 $position1,
-        private Vector3 $position2,
+        private string $description,
+        private string $islandImage,
         private World $world,
+        private ?Vector3 $spawnPosition,
+        private ?Vector3 $position1,
+        private ?Vector3 $position2,
         private array $blocks = [],
-        private string $description = "",
-        private string $islandImage = ""
     ){
         if(empty($this->blocks)) {
             $this->parseBlocks();
@@ -37,6 +37,18 @@ class CustomIsland {
 
     public function getName() : string {
         return $this->name;
+    }
+
+    public function getDescription() : string {
+        return $this->description;
+    }
+
+    public function getIslandImage() : string {
+        return $this->islandImage;
+    }
+
+    public function setDescription(string $description) : void {
+        $this->description = $description;
     }
 
     public function getSpawnPosition() : Vector3 {
@@ -101,6 +113,9 @@ class CustomIsland {
     public function toArray() : array {
         return [
             "name" => $this->name,
+            "description" => $this->description,
+            "island_image" => $this->islandImage,
+            "world" => $this->world->getFolderName(),
             "spawn_position" => [
                 "x" => $this->spawnPosition->getX(),
                 "y" => $this->spawnPosition->getY(),
@@ -116,16 +131,16 @@ class CustomIsland {
                 "y" => $this->position2->getY(),
                 "z" => $this->position2->getZ()
             ],
-            "world" => $this->world->getFolderName(),
             "blocks" => base64_encode(serialize($this->blocks)),
-            "description" => $this->description,
-            "island_image" => $this->islandImage
         ];
     }
 
     public static function fromArray(array $array) : CustomIsland {
         return new CustomIsland(
             $array["name"],
+            $array["description"],
+            $array["island_image"],
+            Server::getInstance()->getWorldManager()->getWorldByName($array["world"]),
             new Vector3(
                 $array["spawn_position"]["x"],
                 $array["spawn_position"]["y"],
@@ -141,10 +156,7 @@ class CustomIsland {
                 $array["position_2"]["y"],
                 $array["position_2"]["z"]
             ),
-            Server::getInstance()->getWorldManager()->getWorldByName($array["world"]),
             unserialize(base64_decode($array["blocks"])),
-            $array["description"],
-            $array["island_image"]
         );
     }
 
