@@ -12,8 +12,11 @@ use phuongaz\azskyblock\utils\IslandSettings;
 use pocketmine\Server;
 use pocketmine\world\generator\GeneratorManager;
 use pocketmine\world\Position;
+use pocketmine\world\World;
 use pocketmine\world\WorldCreationOptions;
 use SOFe\AwaitGenerator\Await;
+
+use czechpmdevs\multiworld\util\WorldUtils as MultiWorldUtils;
 
 class WorldUtils {
 
@@ -27,6 +30,18 @@ class WorldUtils {
         $worldCreator->setGeneratorClass($generator);
 
         $worldManager->generateWorld($name, $worldCreator);
+    }
+
+    public static function getSkyBlockWorld() : ?World {
+        $worldName = IslandSettings::getConfig()->get("world");
+        $world = Server::getInstance()->getWorldManager()->getWorldByName($worldName);
+
+        if($world !== null) {
+            return $world;
+        } else {
+            self::createWorld($worldName);
+            return MultiWorldUtils::getLoadedWorldByName($worldName);
+        }
     }
 
     public static function getIslandFromPos(Position $position, ?\Closure $closure = null) : Generator {

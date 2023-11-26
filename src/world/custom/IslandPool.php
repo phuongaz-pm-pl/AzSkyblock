@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace phuongaz\azskyblock\world\custom;
 
+use czechpmdevs\multiworld\util\WorldUtils;
 use phuongaz\azskyblock\AzSkyBlock;
-use phuongaz\azskyblock\world\CustomIsland;
 use pocketmine\math\Vector3;
 use pocketmine\Server;
 
@@ -40,25 +40,20 @@ class IslandPool {
 
     public static function loads() : void {
         $path = AzSkyBlock::getInstance()->getDataFolder() . "islands/";
-        if(!is_dir($path)) {
-            mkdir($path);
-        }
-
         $count = 0;
         foreach(scandir($path) as $file) {
             if($file === "." || $file === "..") {
                 continue;
             }
-            $name = str_replace(".json", "", $file);
             $data = json_decode(file_get_contents($path . $file), true);
-            $spawnPosition = new Vector3($data["spawnPosition"]["x"], $data["spawnPosition"]["y"], $data["spawnPosition"]["z"]);
-            $position1 = new Vector3($data["position1"]["x"], $data["position1"]["y"], $data["position1"]["z"]);
-            $position2 = new Vector3($data["position2"]["x"], $data["position2"]["y"], $data["position2"]["z"]);
-            $world = Server::getInstance()->getWorldManager()->getWorldByName($data["world"]);
-            if($world === null) {
+            $name = $data["name"];
+            $spawnPosition = new Vector3($data["spawn_position"]["x"], $data["spawn_position"]["y"], $data["spawn_position"]["z"]);
+            $position1 = new Vector3($data["position_1"]["x"], $data["position_1"]["y"], $data["position_1"]["z"]);
+            $position2 = new Vector3($data["position_2"]["x"], $data["position_2"]["y"], $data["position_2"]["z"]);
+            if(($world = WorldUtils::getLoadedWorldByName($data["world"])) === null) {
                 continue;
             }
-            $island = new CustomIsland($name, $spawnPosition, $position1, $position2, $world, $data["blocks"], $data["description"], $data["islandImage"]);
+            $island = new CustomIsland($name, $data["description"], $data["island_image"], $world, $spawnPosition, $position1, $position2, unserialize(base64_decode($data["blocks"])));
             self::add($name, $island);
             $count++;
         }

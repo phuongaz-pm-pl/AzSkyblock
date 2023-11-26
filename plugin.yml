@@ -8,3 +8,6 @@ permissions:
   azskyblock.command:
     default: true
     description: Allow use command
+  azskyblock.command.custom:
+    default: op
+    description: Allow use custom command

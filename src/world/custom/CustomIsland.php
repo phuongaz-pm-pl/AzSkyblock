@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
-namespace phuongaz\azskyblock\world;
+namespace phuongaz\azskyblock\world\custom;
 
+use faz\common\Debug;
 use InvalidArgumentException;
 use phuongaz\azskyblock\AzSkyBlock;
 use phuongaz\azskyblock\utils\IslandSettings;
 use phuongaz\azskyblock\utils\Util;
+use phuongaz\azskyblock\world\WorldUtils;
 use pocketmine\block\RuntimeBlockStateRegistry;
 use pocketmine\math\Vector3;
 use pocketmine\Server;
@@ -25,12 +27,12 @@ class CustomIsland {
         private string $description,
         private string $islandImage,
         private World $world,
-        private ?Vector3 $spawnPosition,
-        private ?Vector3 $position1,
-        private ?Vector3 $position2,
+        private ?Vector3 $spawnPosition = null,
+        private ?Vector3 $position1 = null,
+        private ?Vector3 $position2 = null,
         private array $blocks = [],
     ){
-        if(empty($this->blocks)) {
+        if(empty($this->blocks) and $this->spawnPosition !== null and $this->position1 !== null and $this->position2 !== null) {
             $this->parseBlocks();
         }
     }
@@ -51,15 +53,15 @@ class CustomIsland {
         $this->description = $description;
     }
 
-    public function getSpawnPosition() : Vector3 {
+    public function getSpawnPosition() : ?Vector3 {
         return $this->spawnPosition;
     }
 
-    public function getPosition1() : Vector3 {
+    public function getPosition1() : ?Vector3 {
         return $this->position1;
     }
 
-    public function getPosition2() : Vector3 {
+    public function getPosition2() : ?Vector3 {
         return $this->position2;
     }
 
@@ -88,12 +90,12 @@ class CustomIsland {
     }
 
     public function parseBlocks() : void {
-        $minX = min($this->position1->getX(), $this->position2->getX());
-        $maxX = max($this->position1->getX(), $this->position2->getX());
-        $minY = min($this->position1->getY(), $this->position2->getY());
-        $maxY = max($this->position1->getY(), $this->position2->getY());
-        $minZ = min($this->position1->getZ(), $this->position2->getZ());
-        $maxZ = max($this->position1->getZ(), $this->position2->getZ());
+        $minX = min($this->position1->getFloorX(), $this->position2->getFloorX());
+        $maxX = max($this->position1->getFloorX(), $this->position2->getFloorX());
+        $minY = min($this->position1->getFloorY(), $this->position2->getFloorY());
+        $maxY = max($this->position1->getFloorY(), $this->position2->getFloorY());
+        $minZ = min($this->position1->getFloorZ(), $this->position2->getFloorZ());
+        $maxZ = max($this->position1->getFloorZ(), $this->position2->getFloorZ());
         for($x = $minX; $x <= $maxX; ++$x) {
             for($y = $minY; $y <= $maxY; ++$y) {
                 for($z = $minZ; $z <= $maxZ; ++$z) {
@@ -160,39 +162,36 @@ class CustomIsland {
         );
     }
 
-    public function generate(Position $position, ?\Closure $closure = null) : void {
-        Await::f2c(function() use ($position, $closure){
+    public function generate(?\Closure $closure = null) : void {
+        Await::f2c(function() use ($closure){
             $provider = AzSkyBlock::getInstance()->getProvider();
-            yield from $provider->awaitCount(function(int $distance) use ($position, $closure){
+            yield from $provider->awaitCount(function(int $distance) use ($closure){
                 $blocks = $this->getBlocks();
-                $world = $position->getWorld();
-                $x = $position->getX();
-                $y = $position->getY();
-                $z = $position->getZ();
+                $world = WorldUtils::getSkyBlockWorld();
+
+                $pos1 = $this->position1;
+                $pos2 = $this->position2;
+
+                $minX = min($pos1->getFloorX(), $pos2->getFloorX());
+                $maxX = max($pos1->getFloorX(), $pos2->getFloorX());
+                $minY = min($pos1->getFloorY(), $pos2->getFloorY());
+                $maxY = max($pos1->getFloorY(), $pos2->getFloorY());
+                $minZ = min($pos1->getFloorZ(), $pos2->getFloorZ());
+                $maxZ = max($pos1->getFloorZ(), $pos2->getFloorZ());
+
                 $maxSize = IslandSettings::getMaxSize();
-
-                $minX = $x - (($distance + 1) * $maxSize);
-                $maxX = $x + (($distance + 1) * $maxSize);
-                $minY = $y - (($distance + 1) * $maxSize);
-                $maxY = $y + (($distance + 1) * $maxSize);
-                $minZ = $z - (($distance + 1) * $maxSize);
-                $maxZ = $z + (($distance + 1) * $maxSize);
-
                 $counter = 0;
-                $center = $distance * $maxSize;
-                for($xx = $minX; $xx <= $maxX; ++$xx) {
-                    for($yy = $minY; $yy <= $maxY; ++$yy) {
-                        for($zz = $minZ; $zz <= $maxZ; ++$zz) {
-                            if($xx >= $minX + $center && $xx <= $maxX - $center &&
-                                $zz >= $minZ + $center && $zz <= $maxZ - $center) {
-                                continue;
-                            }
+
+                for ($x = $distance * $maxSize; $x <= $distance * $maxSize + ($maxX - $minX); ++$x) {
+                    for ($y = 15; $y <= 15 + ($maxY - $minY); ++$y) {
+                        for ($z = $distance * $maxSize; $z <= $distance * $maxSize + ($maxZ - $minZ); ++$z) {
                             $block = RuntimeBlockStateRegistry::getInstance()->fromStateId($blocks[$counter]["block"]);
                             try {
-                                $world->setBlock($blocks[$counter]["vector"], $block, false);
+                                $vector = $blocks[$counter]["vector"];
+                                $vector = $vector->add($distance * $maxSize, 0, $distance * $maxSize);
+                                $world->setBlockAt($vector->getFloorX(), $vector->getFloorY(), $vector->getFloorZ(), $block);
                             } catch (InvalidArgumentException $exception) {
-                                //todo: Create new world
-                                throw new InvalidArgumentException("Cannot create island in this world");
+                                Debug::dump("Invalid block at " . $vector->getFloorX() . " " . $vector->getFloorY() . " " . $vector->getFloorZ());
                             }
                             $counter++;
                         }
@@ -210,7 +209,13 @@ class CustomIsland {
             mkdir(AzSkyBlock::getInstance()->getDataFolder() . "islands");
         }
 
+        if(empty($this->blocks) and $this->spawnPosition !== null and $this->position1 !== null and $this->position2 !== null) {
+            $this->parseBlocks();
+        }
+
         $file = AzSkyBlock::getInstance()->getDataFolder() . "islands" . DIRECTORY_SEPARATOR . Util::convertToSlug($this->name) . ".json";
         file_put_contents($file, json_encode($this->toArray()));
+
+        IslandPool::add($this->name, $this);
     }
 }

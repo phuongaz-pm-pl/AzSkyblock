@@ -8,6 +8,8 @@ use phuongaz\azskyblock\island\components\Level;
 use phuongaz\azskyblock\island\components\types\Levels;
 use phuongaz\azskyblock\island\components\Warp;
 use phuongaz\azskyblock\utils\IslandSettings;
+use phuongaz\azskyblock\world\WorldUtils;
+use pocketmine\math\Vector3;
 use pocketmine\player\Player;
 use pocketmine\Server;
 use pocketmine\world\Position;
@@ -19,7 +21,7 @@ class Island {
     private Level $islandLevel;
     private string $islandMembers;
 
-    private Position $islandSpawn;
+    private Vector3|Position $islandSpawn;
 
     /** @var Warp[] $islandWarps */
     private array $islandWarps;
@@ -27,7 +29,7 @@ class Island {
     private bool $islandLocked;
 
 
-    public function __construct(string $player, string $islandName, Level $islandLevel, string $islandMembers, Position $islandSpawn, array $islandWarps, bool $islandLocked) {
+    public function __construct(string $player, string $islandName, Level $islandLevel, string $islandMembers, Position|Vector3 $islandSpawn, array $islandWarps, bool $islandLocked) {
         $this->player = $player;
         $this->islandName = $islandName;
         $this->islandLevel = $islandLevel;
@@ -237,11 +239,10 @@ class Island {
             $array["island_name"],
             Level::fromArray($array["island_level"]),
             $array["island_members"],
-            new Position(
+            new Vector3(
                 $array["island_spawn_x"],
                 $array["island_spawn_y"],
                 $array["island_spawn_z"],
-                $array["island_spawn_world"]
             ),
             $islandWarps,
             $array["island_locked"]
@@ -261,13 +262,17 @@ class Island {
             "island_spawn_x" => $this->islandSpawn->getX(),
             "island_spawn_y" => $this->islandSpawn->getY(),
             "island_spawn_z" => $this->islandSpawn->getZ(),
-            "island_spawn_world" => $this->islandSpawn->getWorld()->getFolderName(),
+            "island_spawn_world" => WorldUtils::getSkyBlockWorld()->getFolderName(),
             "island_warps" => $islandWarps,
             "island_locked" => $this->islandLocked
         ];
     }
 
-    public static function new(string $player, string $islandName, Position $islandSpawn) : Island {
+    public function teleportToIsland(Player $player) : void {
+        $player->teleport(new Position($this->islandSpawn->getX(), $this->islandSpawn->getY(), $this->islandSpawn->getZ(),  WorldUtils::getSkyBlockWorld()));
+    }
+
+    public static function new(string $player, string $islandName, Position|Vector3 $islandSpawn) : Island {
         return new Island(
             $player,
             $islandName,

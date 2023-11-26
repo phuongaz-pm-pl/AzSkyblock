@@ -29,6 +29,7 @@ class AzSkyBlock extends PluginBase {
         ]);
         $this->provider = new SQLiteProvider($connector);
         $this->getServer()->getPluginManager()->registerEvents(new EventHandler(), $this);
+        $this->generateDefaultIslands();
         Server::getInstance()->getCommandMap()->register("AzSkyBlock", new BaseIslandCommand(
             $this, "azskyblock", "AzSkyBlock command", ["azsb"]
         ));
@@ -38,5 +39,12 @@ class AzSkyBlock extends PluginBase {
 
     public function getProvider() : SQLiteProvider {
         return $this->provider;
+    }
+
+    public function generateDefaultIslands() : void {
+        if(!is_dir($this->getDataFolder() . "islands/")) {
+            mkdir($this->getDataFolder() . "islands/");
+            $this->saveResource("islands/basic-island.json");
+        }
     }
 }

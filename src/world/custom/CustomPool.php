@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace phuongaz\azskyblock\world\custom;
 
-use phuongaz\azskyblock\world\CustomIsland;
-
 class CustomPool {
 
     private static $islands = [];
@@ -24,6 +22,11 @@ class CustomPool {
 
     public static function getAll() : array {
         return self::$islands;
+    }
+
+    public static function reload(CustomIsland $island) : void {
+        self::remove($island->getName());
+        self::add($island);
     }
 
     public function save() : void {

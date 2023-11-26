@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace phuongaz\azskyblock\provider;
 
 use Closure;
+use faz\debug\Debug;
 use Generator;
 use phuongaz\azskyblock\island\Island;
 use poggit\libasynql\DataConnector;
@@ -32,23 +33,23 @@ class SQLiteProvider {
 
     public function awaitCreate(string $player, Island $island, ?Closure $closure = null) : Generator {
         yield from $this->connector->asyncInsert(self::CREATE, [
-            "player" => $player,
+            "username" => $player,
             "data" => json_encode($island->toArray()),
-            "created_at" => date("Y-m-d H:i:s")
+            "date_created" => date("Y-m-d H:i:s")
         ]);
-        $this->handleClosure($closure, null);
+        $this->handleClosure($closure, $island);
     }
 
     public function awaitDelete(string $player, ?Closure $closure = null) : Generator {
         yield from $this->connector->asyncChange(self::DELETE, [
-            "player" => $player
+            "username" => $player
         ]);
         $this->handleClosure($closure, null);
     }
 
     public function awaitUpdate(string $player, Island $island, ?Closure $closure = null) : Generator {
         yield from $this->connector->asyncChange(self::UPDATE, [
-            "player" => $player,
+            "username" => $player,
             "data" => json_encode($island->toArray())
         ]);
         $this->handleClosure($closure, null);
@@ -56,7 +57,7 @@ class SQLiteProvider {
 
     public function awaitGet(string $player, ?Closure $closure = null) : Generator {
         $result = yield from $this->connector->asyncSelect(self::GET, [
-            "player" => $player
+            "username" => $player
         ]);
 
         if(!empty($result)) {
@@ -80,7 +81,7 @@ class SQLiteProvider {
 
     public function awaitCount(?Closure $closure = null) : Generator {
         $result = yield from $this->connector->asyncSelect(self::COUNT);
-        $this->handleClosure($closure, $result);
+        $this->handleClosure($closure, $result[0]["COUNT(*)"]);
     }
 
     private function handleClosure(?Closure $closure, $result) : void {

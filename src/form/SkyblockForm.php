@@ -10,12 +10,14 @@ use dktapps\pmforms\element\Input;
 use dktapps\pmforms\element\Label;
 use dktapps\pmforms\element\Toggle;
 use dktapps\pmforms\MenuOption;
+use faz\common\Debug;
 use faz\common\form\AsyncForm;
 use Generator;
 use phuongaz\azskyblock\AzSkyBlock;
 use phuongaz\azskyblock\island\Island;
+use phuongaz\azskyblock\world\custom\CustomIsland;
 use phuongaz\azskyblock\world\custom\IslandPool;
-use phuongaz\azskyblock\world\CustomIsland;
+use pocketmine\math\Vector3;
 use pocketmine\player\Player;
 use pocketmine\Server;
 use pocketmine\world\Position;
@@ -28,16 +30,12 @@ class SkyblockForm extends AsyncForm {
     }
 
     public function main(): Generator {
-
         $provider = AzSkyBlock::getInstance()->getProvider();
         /** @var Island|null $playerIsland*/
-        $playerIsland = yield from $provider->awaitGet($this->getPlayer()->getName(), function(?Island $island) {
-            if(!is_null($island)) {
-                Await::g2c($this->chooseIsland());
-            }
-        });
+        $playerIsland = yield from $provider->awaitGet($this->getPlayer()->getName());
 
         if($playerIsland == null) {
+            yield from $this->chooseIsland();
             return;
         }
 
@@ -183,11 +181,12 @@ class SkyblockForm extends AsyncForm {
     }
 
     public function chooseIsland(): Generator {
+        /** @var CustomIsland[] $islands */
         $islands = array_values(IslandPool::getAll());
         $menuOptions = [];
 
         foreach($islands as $island) {
-            $menuOptions[] = new MenuOption($island->getIslandName());
+            $menuOptions[] = new MenuOption($island->getName());
         }
 
         $menuChoose = yield from $this->menu(
@@ -195,6 +194,11 @@ class SkyblockForm extends AsyncForm {
             "Choose island",
             $menuOptions
         );
+
+        if($menuChoose === null) {
+            yield from $this->main();
+            return;
+        }
 
         /** @var CustomIsland $island*/
         $island = array_values(IslandPool::getAll())[$menuChoose];
@@ -206,16 +210,14 @@ class SkyblockForm extends AsyncForm {
 
         if($confirm) {
             $this->getPlayer()->sendMessage("§aCreating island " . $island->getName());
-            $island->generate($this->getPlayer()->getPosition(), function(Position $spawn){
+            $island->generate(function(Position|Vector3 $spawn){
                 $this->getPlayer()->sendMessage("Island created");
-
                 $player = $this->getPlayer()->getName();
                 $island = Island::new($player, $player . "'s island", $spawn);
                 $provider = AzSkyBlock::getInstance()->getProvider();
-
-                yield from $provider->awaitCreate($player, $island, function(?Island $island) {
-                    $this->getPlayer()->teleport($island->getIslandSpawn());
-                });
+                Await::g2c($provider->awaitCreate($player, $island, function(?Island $island) {
+                    $island->teleportToIsland($this->getPlayer());
+                }));
             });
             return;
         }
