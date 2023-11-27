@@ -6,7 +6,6 @@ namespace phuongaz\azskyblock;
 
 use phuongaz\azskyblock\command\BaseIslandCommand;
 use phuongaz\azskyblock\handler\EventHandler;
-use phuongaz\azskyblock\island\Island;
 use phuongaz\azskyblock\provider\SQLiteProvider;
 use phuongaz\azskyblock\world\custom\IslandPool;
 use phuongaz\azskyblock\world\WorldUtils;
@@ -14,7 +13,6 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\Server;
 use pocketmine\utils\SingletonTrait;
 use poggit\libasynql\libasynql;
-use SOFe\AwaitGenerator\Await;
 
 class AzSkyBlock extends PluginBase {
     use SingletonTrait;

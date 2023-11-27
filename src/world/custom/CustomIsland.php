@@ -10,10 +10,11 @@ use phuongaz\azskyblock\AzSkyBlock;
 use phuongaz\azskyblock\utils\IslandSettings;
 use phuongaz\azskyblock\utils\Util;
 use phuongaz\azskyblock\world\WorldUtils;
+use pocketmine\block\Chest;
+use pocketmine\block\tile\Chest as TileChest;
 use pocketmine\block\RuntimeBlockStateRegistry;
 use pocketmine\math\Vector3;
 use pocketmine\Server;
-use pocketmine\world\Position;
 use pocketmine\world\World;
 use SOFe\AwaitGenerator\Await;
 
@@ -182,6 +183,8 @@ class CustomIsland {
                 $maxSize = IslandSettings::getMaxSize();
                 $counter = 0;
 
+                $startItems = IslandSettings::getStartItems();
+                $chests = [];
                 for ($x = $distance * $maxSize; $x <= $distance * $maxSize + ($maxX - $minX); ++$x) {
                     for ($y = 15; $y <= 15 + ($maxY - $minY); ++$y) {
                         for ($z = $distance * $maxSize; $z <= $distance * $maxSize + ($maxZ - $minZ); ++$z) {
@@ -190,6 +193,9 @@ class CustomIsland {
                                 $vector = $blocks[$counter]["vector"];
                                 $vector = $vector->add($distance * $maxSize, 0, $distance * $maxSize);
                                 $world->setBlockAt($vector->getFloorX(), $vector->getFloorY(), $vector->getFloorZ(), $block);
+                                if($block instanceof Chest) {
+                                    $chests[] = $world->getBlockAt($vector->getFloorX(), $vector->getFloorY(), $vector->getFloorZ());
+                                }
                             } catch (InvalidArgumentException $exception) {
                                 Debug::dump("Invalid block at " . $vector->getFloorX() . " " . $vector->getFloorY() . " " . $vector->getFloorZ());
                             }
@@ -197,8 +203,43 @@ class CustomIsland {
                         }
                     }
                 }
+
+                $hasGiven = false;
+
+                $chestTiles = [];
+
+                foreach($chests as $chest) {
+                    $tile = $world->getTile($chest->getPosition());
+                    if($tile instanceof TileChest) {
+                        $chestTiles[] = $tile;
+                    }
+                }
+
+                $chestCount = count($chestTiles);
+                if ($chestCount > 0) {
+
+                    $itemCount = count($startItems);
+                    foreach ($chestTiles as $tile) {
+                        if($itemCount <= 0) {
+                            continue;
+                        }
+                        shuffle($startItems);
+                        $random = mt_rand(1, $itemCount);
+
+                        for ($i = 0; $i < $random; ++$i) {
+                            if (!empty($startItems)) {
+                                $item = array_shift($startItems);
+                                $tile->getInventory()->addItem($item);
+                                $itemCount--;
+                            }
+                        }
+                    }
+                    $hasGiven = true;
+                }
+
+
                 if($closure !== null) {
-                    $closure($this->spawnPosition);
+                    $closure($this->spawnPosition, $hasGiven);
                 }
             });
         });

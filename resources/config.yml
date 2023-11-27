@@ -1,5 +1,18 @@
+# This world contains islands, and if one does not exist, it will be automatically generated.
 world: skyblock
+
+# The distance between the islands
 island-size: 300
+
+# If a player creates an island with an existing chest, the initial items will automatically be added to that chest!
+# If there are too many chests, the items will be randomly distributed among them.
+start-items:
+  - name: "melon_seeds"
+    amount: 1
+  - name: "pumpkin_seeds"
+    amount: 1
+  - name: "sugar_cane"
+    amount: 1
 
 database:
   # The database type. "sqlite" and "mysql" are supported.

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace phuongaz\azskyblock\provider;
 
 use Closure;
-use faz\debug\Debug;
 use Generator;
 use phuongaz\azskyblock\island\Island;
 use poggit\libasynql\DataConnector;

@@ -16,6 +16,7 @@ use Generator;
 use phuongaz\azskyblock\AzSkyBlock;
 use phuongaz\azskyblock\island\components\Warp;
 use phuongaz\azskyblock\island\Island;
+use phuongaz\azskyblock\utils\IslandSettings;
 use phuongaz\azskyblock\world\custom\CustomIsland;
 use phuongaz\azskyblock\world\custom\IslandPool;
 use phuongaz\azskyblock\world\WorldUtils;
@@ -274,13 +275,16 @@ class SkyblockForm extends AsyncForm {
 
         if($confirm) {
             $this->getPlayer()->sendMessage("§aCreating island " . $island->getName());
-            $island->generate(function(Position|Vector3 $spawn){
+            $island->generate(function(Position|Vector3 $spawn, bool $hasGiven){
                 $this->getPlayer()->sendMessage("Island created");
                 $player = $this->getPlayer()->getName();
                 $island = Island::new($player, $player . "'s island", $spawn);
                 $provider = AzSkyBlock::getInstance()->getProvider();
-                Await::g2c($provider->awaitCreate($player, $island, function(?Island $island) {
+                Await::g2c($provider->awaitCreate($player, $island, function(?Island $island) use ($hasGiven) {
                     $island->teleportToIsland($this->getPlayer());
+                    if(!$hasGiven) {
+                        $this->getPlayer()->getInventory()->addItem(...IslandSettings::getStartItems());
+                    }
                 }));
             });
             return;

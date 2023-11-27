@@ -248,7 +248,7 @@ class Island {
         $x2 = $spawn->getFloorX() + $islandSize;
         $z1 = $spawn->getFloorZ() - $islandSize;
         $z2 = $spawn->getFloorZ() + $islandSize;
-        $world = $spawn->getWorld();
+        $world = WorldUtils::getSkyBlockWorld();
 
         $players = [];
         foreach ($world->getPlayers() as $player) {

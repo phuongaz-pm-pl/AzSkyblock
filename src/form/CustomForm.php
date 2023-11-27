@@ -41,8 +41,8 @@ class CustomForm extends AsyncForm {
 
     public function edit(CustomIsland $island): \Generator {
         $elements = [
-            new Input("name", "Name of island", $island->getName()),
-            new Input("description", "Description of island", $island->getDescription()),
+            new Input("name", "Name of island", $island->getName(), $island->getName()),
+            new Input("description", "Description of island", $island->getDescription(), $island->getDescription()),
             new Toggle("spawn", $this->getToggleName($island->getSpawnPosition(), "spawn"), $island->getSpawnPosition() !== null),
             new Toggle("position1", $this->getToggleName($island->getPosition1(), "pos1"), $island->getPosition1() !== null),
             new Toggle("position2", $this->getToggleName($island->getPosition2(), "pos2"), $island->getPosition2() !== null),
@@ -96,7 +96,7 @@ class CustomForm extends AsyncForm {
         $response = yield from $this->menu("Select island", "choose one!", $elements);
 
         if ($response !== null) {
-            $selectedIsland = $islands[$response];
+            $selectedIsland = array_values($islands)[$response];
             yield from $this->edit($selectedIsland);
         }
     }
