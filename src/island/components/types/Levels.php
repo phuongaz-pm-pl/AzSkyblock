@@ -49,9 +49,8 @@ enum Levels: int {
     }
 
 
-    public static function getLevel(int $level) : int {
+    public static function getLevel(int $level) : self {
         return match($level) {
-            1 => self::LEVEL_1,
             2 => self::LEVEL_2,
             3 => self::LEVEL_3,
             4 => self::LEVEL_4,
@@ -60,7 +59,7 @@ enum Levels: int {
             7 => self::LEVEL_7,
             8 => self::LEVEL_8,
             9 => self::LEVEL_9,
-            default => 0
+            default => self::LEVEL_1
         };
     }
 

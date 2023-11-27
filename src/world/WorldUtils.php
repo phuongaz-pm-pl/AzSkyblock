@@ -54,7 +54,7 @@ class WorldUtils {
         /** @var Island|null $islands*/
         $island = yield from Await::promise(function (Closure $resolve) use ($position) {
             $provider = AzSkyBlock::getInstance()->getProvider();
-            yield from $provider->awaitGetAll(function(array $islands) use ($position, $resolve){
+            Await::g2c($provider->awaitGetAll(function(array $islands) use ($position, $resolve){
                 $result = null;
 
                 /** @var Island $island*/
@@ -71,7 +71,7 @@ class WorldUtils {
                     }
                 }
                 $resolve($result);
-            });
+            }));
         });
 
         if($island === null) {

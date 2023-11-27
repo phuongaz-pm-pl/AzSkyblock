@@ -1,6 +1,5 @@
-<img src="./basic-island.png" alt="Island" width=150 height=150 align="right">
-
 # AzSkyblock 
+<img src="./basic-island.png" alt="Island" width=150 height=150 align="right">
 
 ##### This plugin is still in development, and not ready for production use.
 

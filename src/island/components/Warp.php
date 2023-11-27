@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace phuongaz\azskyblock\island\components;
 
+use phuongaz\azskyblock\world\WorldUtils;
 use pocketmine\math\Vector3;
+use pocketmine\world\Position;
 
 final class Warp {
 
@@ -12,13 +14,18 @@ final class Warp {
         private string $warpName,
         private Vector3 $warpPosition
     ){}
-
     public function getWarpName() : string {
         return $this->warpName;
     }
 
-    public function getWarpPosition() : Vector3 {
-        return $this->warpPosition;
+    public function getWarpPosition() : Position {
+        $world = WorldUtils::getSkyBlockWorld();
+        return new Position(
+            $this->warpPosition->getX(),
+            $this->warpPosition->getY(),
+            $this->warpPosition->getZ(),
+            $world
+        );
     }
 
     public function setWarpName(string $warpName) : void {

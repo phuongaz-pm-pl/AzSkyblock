@@ -61,7 +61,8 @@ class SQLiteProvider {
         ]);
 
         if(!empty($result)) {
-            $island = Island::fromArray(json_decode($result["data"], true));
+            Debug::dumpArray($result);
+            $island = Island::fromArray(json_decode($result[0]["data"], true));
             $this->handleClosure($closure, $island);
             return;
         }

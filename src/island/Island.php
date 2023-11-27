@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace phuongaz\azskyblock\island;
 
+use phuongaz\azskyblock\AzSkyBlock;
+use phuongaz\azskyblock\handler\island\warp\IslandAddWarpEvent;
+use phuongaz\azskyblock\handler\island\warp\IslandRemoveWarpEvent;
 use phuongaz\azskyblock\island\components\Level;
 use phuongaz\azskyblock\island\components\types\Levels;
 use phuongaz\azskyblock\island\components\Warp;
@@ -11,8 +14,8 @@ use phuongaz\azskyblock\utils\IslandSettings;
 use phuongaz\azskyblock\world\WorldUtils;
 use pocketmine\math\Vector3;
 use pocketmine\player\Player;
-use pocketmine\Server;
 use pocketmine\world\Position;
+use SOFe\AwaitGenerator\Await;
 
 class Island {
 
@@ -21,7 +24,7 @@ class Island {
     private Level $islandLevel;
     private string $islandMembers;
 
-    private Vector3|Position $islandSpawn;
+    private Vector3 $islandSpawn;
 
     /** @var Warp[] $islandWarps */
     private array $islandWarps;
@@ -29,7 +32,7 @@ class Island {
     private bool $islandLocked;
 
 
-    public function __construct(string $player, string $islandName, Level $islandLevel, string $islandMembers, Position|Vector3 $islandSpawn, array $islandWarps, bool $islandLocked) {
+    public function __construct(string $player, string $islandName, Level $islandLevel, string $islandMembers, Vector3 $islandSpawn, array $islandWarps, bool $islandLocked) {
         $this->player = $player;
         $this->islandName = $islandName;
         $this->islandLevel = $islandLevel;
@@ -55,7 +58,7 @@ class Island {
         return $this->islandMembers;
     }
 
-    public function getIslandSpawn() : Position {
+    public function getIslandSpawn() : Vector3 {
         return $this->islandSpawn;
     }
 
@@ -94,16 +97,41 @@ class Island {
         $this->islandLocked = $islandLocked;
     }
 
-    public function addWarp(string $warpName, Position $warpPosition) : void {
-        $this->islandWarps[] = new Warp($warpName, $warpPosition);
+    public function addWarp(string $warpName, Vector3 $warpPosition) : bool {
+        $warp = new Warp($warpName, $warpPosition);
+
+        if($this->hasWarp($warpName)) {
+            return false;
+        }
+
+        $event = new IslandAddWarpEvent($this, $warp);
+        if($event->isCancelled()) {
+            return false;
+        }
+        $event->call();
+        $this->islandWarps[] = $warp;
+
+        return true;
     }
 
-    public function removeWarp(string $warpName) : void {
+    public function removeWarp(string $warpName) : bool {
+        $warp = $this->getWarp($warpName);
+
+        if(is_null($warp)) {
+            return false;
+        }
+
+        $event = new IslandRemoveWarpEvent($this, $warp);
+        if($event->isCancelled()) {
+            return false;
+        }
+        $event->call();
         foreach ($this->islandWarps as $key => $warp) {
             if ($warp->getWarpName() == $warpName) {
                 unset($this->islandWarps[$key]);
             }
         }
+        return true;
     }
 
     public function getWarp(string $warpName) : ?Warp {
@@ -218,7 +246,7 @@ class Island {
         $z1 = $spawn->getFloorZ() - $islandSize;
         $z2 = $spawn->getFloorZ() + $islandSize;
 
-        if($player->getWorld()->getFolderName() !== $spawn->getWorld()->getFolderName()) {
+        if($player->getWorld()->getFolderName() !== WorldUtils::getSkyBlockWorld()->getFolderName()) {
             return false;
         }
 
@@ -272,7 +300,7 @@ class Island {
         $player->teleport(new Position($this->islandSpawn->getX(), $this->islandSpawn->getY(), $this->islandSpawn->getZ(),  WorldUtils::getSkyBlockWorld()));
     }
 
-    public static function new(string $player, string $islandName, Position|Vector3 $islandSpawn) : Island {
+    public static function new(string $player, string $islandName, Vector3 $islandSpawn) : Island {
         return new Island(
             $player,
             $islandName,
@@ -282,5 +310,10 @@ class Island {
             [],
             false
         );
+    }
+
+    public function save() : void {
+        $provider = AzSkyBlock::getInstance()->getProvider();
+        Await::g2c($provider->awaitUpdate($this->getPlayer(), $this));
     }
 }

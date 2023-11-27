@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace phuongaz\azskyblock\handler;
 
+use faz\common\Debug;
 use phuongaz\azskyblock\form\SkyblockForm;
 use phuongaz\azskyblock\island\Island;
 use phuongaz\azskyblock\world\WorldUtils;

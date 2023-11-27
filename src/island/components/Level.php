@@ -31,7 +31,7 @@ class Level {
 
     public static function fromArray(array $array) : Level {
         return new Level(
-            Levels::from($array["level"]),
+            Levels::getLevel($array["level"]),
             $array["exp"]
         );
     }

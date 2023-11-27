@@ -10,10 +10,11 @@ use dktapps\pmforms\element\Input;
 use dktapps\pmforms\element\Label;
 use dktapps\pmforms\element\Toggle;
 use dktapps\pmforms\MenuOption;
-use faz\common\Debug;
 use faz\common\form\AsyncForm;
+use faz\common\form\FastForm;
 use Generator;
 use phuongaz\azskyblock\AzSkyBlock;
+use phuongaz\azskyblock\island\components\Warp;
 use phuongaz\azskyblock\island\Island;
 use phuongaz\azskyblock\world\custom\CustomIsland;
 use phuongaz\azskyblock\world\custom\IslandPool;
@@ -31,31 +32,54 @@ class SkyblockForm extends AsyncForm {
 
     public function main(): Generator {
         $provider = AzSkyBlock::getInstance()->getProvider();
-        /** @var Island|null $playerIsland*/
-        $playerIsland = yield from $provider->awaitGet($this->getPlayer()->getName());
+        yield from $provider->awaitGet($this->getPlayer()->getName(), function(?Island $island) {
+            Await::f2c(function() use ($island) {
+                if (is_null($island)) {
+                    yield from $this->chooseIsland();
+                    return;
+                }
 
-        if($playerIsland == null) {
-            yield from $this->chooseIsland();
-            return;
-        }
-
-        $menuOptions = [
-            new MenuOption("Teleport another"),
-            new MenuOption("Manager"),
-            new MenuOption("Settings"),
-            new MenuOption("Warps")
-        ];
-
-        $menuChoose = yield from $this->menu(
-            "Skyblock",
-            $playerIsland->getIslandName(),
-            $menuOptions
-        );
-
-        if($menuChoose === 0) {
-            yield from $this->teleport($playerIsland);
-        }
+                yield from $this->handleMenuOptions($island);
+            });
+        });
     }
+
+    private function handleMenuOptions(Island $island): Generator {
+        yield from Await::f2c(function() use ($island) {
+            $menuOptions = [
+                new MenuOption("Go to island"),
+                new MenuOption("Teleport"),
+                new MenuOption("Manager"),
+                new MenuOption("Warps")
+            ];
+
+            $menuChoose = yield from $this->menu(
+                "Skyblock",
+                $island->getIslandName(),
+                $menuOptions
+            );
+
+            if($menuChoose === null) {
+                return;
+            }
+
+            switch ($menuChoose) {
+                case 0:
+                    $this->getPlayer()->teleport($island->getIslandSpawn());
+                    break;
+                case 1:
+                    yield from $this->teleport($island);
+                    break;
+                case 2:
+                    yield from $this->manager($island);
+                    break;
+                case 3:
+                    yield from $this->warps($island);
+                    break;
+            }
+        });
+    }
+
 
     public function warps(Island $island) : Generator {
         $menuOptions = [
@@ -94,13 +118,18 @@ class SkyblockForm extends AsyncForm {
             $data = $response->getAll();
             $name = $data["name"];
 
-            if($island->isInIsland($this->getPlayer())) {
+            if(!$island->isInIsland($this->getPlayer())) {
                 $this->getPlayer()->sendMessage("§cYou must be in your island");
                 return;
             }
 
-            $island->addWarp($name, $this->getPlayer()->getPosition());
-            $this->getPlayer()->sendMessage("§aWarp " . $name . " has been created");
+            $isAdded = $island->addWarp($name, $this->getPlayer()->getPosition()->asVector3());
+
+            $message = $isAdded ? "§aWarp " . $name . " has been created" : "§cWarp " . $name . " already exists";
+
+            FastForm::simpleNotice($this->getPlayer(), $message, function () use ($island) {
+                Await::g2c($this->warps($island));
+            });
             return;
         }
         yield from $this->warps($island);
@@ -121,8 +150,13 @@ class SkyblockForm extends AsyncForm {
             $warpName = $response->getAll()["name"];
             $warp = array_values($warpsName)[$warpName];
 
-            $island->removeWarp($warp);
-            $this->getPlayer()->sendMessage("§aWarp " . $warp . " has been removed");
+
+            $isRemoved = $island->removeWarp($warp);
+            $message = $isRemoved ? "§aWarp " . $warp . " has been removed" : "§cWarp " . $warp . " not found";
+
+            FastForm::simpleNotice($this->getPlayer(), $message, function () use ($island) {
+                Await::g2c($this->warps($island));
+            });
             return;
         }
         yield from $this->warps($island);
@@ -130,21 +164,26 @@ class SkyblockForm extends AsyncForm {
 
     public function teleportWarp(Island $island) : Generator {
         $warps = $island->getIslandWarps();
-        $warpsName = array_map(function(string $warp) {
-            return $warp;
+
+        $warpOptions = array_map(function(Warp $warp) {
+            return new MenuOption($warp->getWarpName());
         }, $warps);
 
-        $response = yield from $this->custom("Teleport warp", [
-            new Label("label", "Warps of your island"),
-            new Dropdown("name", "Name of warp", $warpsName)
-        ]);
+        if(count($warpOptions) === 0) {
+            $this->getPlayer()->sendMessage("§cYour island has no warp");
+            return;
+        }
 
-        if($response !== null) {
-            $warpName = $response->getAll()["name"];
-            $warpName = array_values($warpsName)[$warpName];
-            $warp = $island->getWarp($warpName);
+        $warpChoose = yield from $this->menu(
+            "Teleport warp",
+            $island->getIslandName(),
+            $warpOptions
+        );
+
+        if(!is_null($warpChoose)) {
+            $warp = array_values($warps)[$warpChoose];
             $this->getPlayer()->teleport($warp->getWarpPosition());
-            $this->getPlayer()->sendMessage("§aTeleported to " . $warpName);
+            $this->getPlayer()->sendMessage("§aTeleported to " . $warp->getWarpName());
             return;
         }
         yield from $this->warps($island);
@@ -162,18 +201,20 @@ class SkyblockForm extends AsyncForm {
         if($response !== null) {
             $data = $response->getAll();
             $name = $data["name"];
-            yield from $provider->awaitGet($name, function(?Island $island) {
-                if(is_null($island)) {
+            yield from $provider->awaitGet($name, function(?Island $islandTarget) use ($island) {
+                if(is_null($islandTarget)) {
                     $this->getPlayer()->sendMessage("§cPlayer not found");
                     return;
                 }
-                if($island->isLocked()) {
-                    $this->getPlayer()->sendMessage("§cPlayer's island is locked");
+                if($islandTarget->isLocked()) {
+                    FastForm::simpleNotice($this->getPlayer(), "Island ". $islandTarget->getIslandName()." locked", function () use ($island) {
+                        Await::g2c($this->teleport($island));
+                    });
                     return;
                 }
-                $spawn = $island->getIslandSpawn();
+                $spawn = $islandTarget->getIslandSpawn();
                 $this->getPlayer()->teleport($spawn);
-                $this->getPlayer()->sendMessage("§aTeleported to " . $island->getIslandName());
+                $this->getPlayer()->sendMessage("§aTeleported to " . $islandTarget->getIslandName());
             });
             return;
         }
@@ -329,7 +370,9 @@ class SkyblockForm extends AsyncForm {
             $player = array_values($membersName)[$playerName];
 
             $island->removeMember($player);
-            $this->getPlayer()->sendMessage("§aPlayer " . $player . " has been removed");
+            FastForm::simpleNotice($this->getPlayer(), "Player " . $player . " has been removed", function () use ($island) {
+                Await::g2c($this->members($island));
+            });
             return;
         }
         yield from $this->members($island);
@@ -346,7 +389,9 @@ class SkyblockForm extends AsyncForm {
         if($response !== null) {
             $islandLocked = $response->getAll()["lock"];
             $island->setLocked($islandLocked);
-            $this->getPlayer()->sendMessage("§aIsland locked: " . ($islandLocked ? "true" : "false"));
+            FastForm::simpleNotice($this->getPlayer(), "Island has been " . ($islandLocked ? "locked" : "unlocked"), function () use ($island) {
+                Await::g2c($this->manager($island));
+            });
             return;
         }
 
@@ -376,7 +421,9 @@ class SkyblockForm extends AsyncForm {
                     }
                     $player->teleport($island->getIslandSpawn());
                     $player->sendMessage("§cYou have been kicked from island " . $island->getIslandName());
-                    $this->getPlayer()->sendMessage("§aPlayer " . $player->getName() . " has been kicked");
+                    FastForm::simpleNotice($this->getPlayer(), "Player " . $player->getName() . " has been kicked", function () use ($island) {
+                        Await::g2c($this->manager($island));
+                    });
                 });
                 return;
             }
