@@ -15,6 +15,7 @@ use pocketmine\block\tile\Chest as TileChest;
 use pocketmine\block\RuntimeBlockStateRegistry;
 use pocketmine\math\Vector3;
 use pocketmine\Server;
+use pocketmine\world\format\Chunk;
 use pocketmine\world\World;
 use SOFe\AwaitGenerator\Await;
 
@@ -173,6 +174,7 @@ class CustomIsland {
                 $pos1 = $this->position1;
                 $pos2 = $this->position2;
 
+
                 $minX = min($pos1->getFloorX(), $pos2->getFloorX());
                 $maxX = max($pos1->getFloorX(), $pos2->getFloorX());
                 $minY = min($pos1->getFloorY(), $pos2->getFloorY());
@@ -185,6 +187,7 @@ class CustomIsland {
 
                 $startItems = IslandSettings::getStartItems();
                 $chests = [];
+
                 for ($x = $distance * $maxSize; $x <= $distance * $maxSize + ($maxX - $minX); ++$x) {
                     for ($y = 15; $y <= 15 + ($maxY - $minY); ++$y) {
                         for ($z = $distance * $maxSize; $z <= $distance * $maxSize + ($maxZ - $minZ); ++$z) {
@@ -192,7 +195,15 @@ class CustomIsland {
                             try {
                                 $vector = $blocks[$counter]["vector"];
                                 $vector = $vector->add($distance * $maxSize, 0, $distance * $maxSize);
-                                $world->setBlockAt($vector->getFloorX(), $vector->getFloorY(), $vector->getFloorZ(), $block);
+
+                                $chunkX = $vector->getFloorX() >> Chunk::COORD_BIT_SIZE;
+                                $chunkZ = $vector->getFloorZ() >> Chunk::COORD_BIT_SIZE;
+                                $world->orderChunkPopulation($chunkX, $chunkZ, null)->onCompletion(function(Chunk $chunk) use ($block, $vector, $world) {
+                                    $world->setBlockAt($vector->getFloorX(), $vector->getFloorY(), $vector->getFloorZ(), $block);
+                                }, function(\Throwable $error){
+                                    Debug::dump($error->getMessage());
+                                });
+
                                 if($block instanceof Chest) {
                                     $chests[] = $world->getBlockAt($vector->getFloorX(), $vector->getFloorY(), $vector->getFloorZ());
                                 }
@@ -203,6 +214,10 @@ class CustomIsland {
                         }
                     }
                 }
+
+                $this->spawnPosition = new Vector3($distance * $maxSize + $this->spawnPosition->getX(), $this->spawnPosition->getY(), $distance * $maxSize + $this->spawnPosition->getZ());
+                $this->position1 = new Vector3($distance * $maxSize + $this->position1->getX(), $this->position1->getY(), $distance * $maxSize + $this->position1->getZ());
+                $this->position2 = new Vector3($distance * $maxSize + $this->position2->getX(), $this->position2->getY(), $distance * $maxSize + $this->position2->getZ());
 
                 $hasGiven = false;
 

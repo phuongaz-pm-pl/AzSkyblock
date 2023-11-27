@@ -81,6 +81,17 @@ class SQLiteProvider {
         $this->handleClosure($closure, $islands);
     }
 
+    public function getLastIsland(?Closure $closure = null) : Generator {
+        $result = yield from $this->connector->asyncSelect(self::GET_ALL);
+        $islands = [];
+        foreach($result as $data) {
+            $island = Island::fromArray(json_decode($data["data"], true));
+            $island->setDateCreated($data["date_created"]);
+            $islands[] = $island;
+        }
+        $this->handleClosure($closure, end($islands));
+    }
+
     public function awaitCount(?Closure $closure = null) : Generator {
         $result = yield from $this->connector->asyncSelect(self::COUNT);
         $this->handleClosure($closure, $result[0]["COUNT(*)"]);
