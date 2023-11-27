@@ -18,3 +18,4 @@ Simple Skyblock game play plugin for PocketMine-MP, designed for LOCM Skyblock s
 - [ ] API
 - [ ] Skyblock Shop
 - [ ] Island Upgrades
+- [ ] Generate next world when player reach border
