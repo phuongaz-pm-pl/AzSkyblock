@@ -17,6 +17,10 @@ class Level {
         return $this->level;
     }
 
+    public function getLevelInt() : int {
+        return $this->level->toLevel();
+    }
+
     public function getExp() : int {
         return $this->exp;
     }

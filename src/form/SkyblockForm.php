@@ -18,6 +18,7 @@ use phuongaz\azskyblock\island\components\Warp;
 use phuongaz\azskyblock\island\Island;
 use phuongaz\azskyblock\world\custom\CustomIsland;
 use phuongaz\azskyblock\world\custom\IslandPool;
+use phuongaz\azskyblock\world\WorldUtils;
 use pocketmine\math\Vector3;
 use pocketmine\player\Player;
 use pocketmine\Server;
@@ -38,14 +39,13 @@ class SkyblockForm extends AsyncForm {
                     yield from $this->chooseIsland();
                     return;
                 }
-
-                yield from $this->handleMenuOptions($island);
+                $this->handleMenuOptions($island);
             });
         });
     }
 
-    private function handleMenuOptions(Island $island): Generator {
-        yield from Await::f2c(function() use ($island) {
+    private function handleMenuOptions(Island $island): void {
+        Await::f2c(function() use ($island) {
             $menuOptions = [
                 new MenuOption("Go to island"),
                 new MenuOption("Teleport"),
@@ -65,7 +65,7 @@ class SkyblockForm extends AsyncForm {
 
             switch ($menuChoose) {
                 case 0:
-                    $this->getPlayer()->teleport($island->getIslandSpawn());
+                    $this->getPlayer()->teleport($island->getIslandSpawnPosition());
                     break;
                 case 1:
                     yield from $this->teleport($island);
@@ -117,13 +117,20 @@ class SkyblockForm extends AsyncForm {
         if($response !== null) {
             $data = $response->getAll();
             $name = $data["name"];
-
-            if(!$island->isInIsland($this->getPlayer())) {
-                $this->getPlayer()->sendMessage("§cYou must be in your island");
+            $player = $this->getPlayer();
+            if($name === "") {
+                FastForm::simpleNotice($player, "§cName of warp cannot be empty", function () use ($island) {
+                    Await::g2c($this->createWarp($island));
+                });
                 return;
             }
 
-            $isAdded = $island->addWarp($name, $this->getPlayer()->getPosition()->asVector3());
+            if(!$player->getWorld()->getFolderName() != WorldUtils::getSkyBlockWorld()->getFolderName()) {
+                $this->getPlayer()->sendMessage("§cYou must be in skyblock world");
+                return;
+            }
+
+            $isAdded = $island->addWarp($name, $this->getPlayer()->getPosition()->asVector3(), true);
 
             $message = $isAdded ? "§aWarp " . $name . " has been created" : "§cWarp " . $name . " already exists";
 
@@ -137,24 +144,31 @@ class SkyblockForm extends AsyncForm {
 
     public function removeWarp(Island $island) : Generator {
         $warps = $island->getIslandWarps();
-        $warpsName = array_map(function(string $warp) {
-            return $warp;
+
+        $warpOptions = array_map(function(Warp $warp) {
+            return new MenuOption($warp->getWarpName());
         }, $warps);
 
-        $response = yield from $this->custom("Remove warp", [
-            new Label("label", "Warps of your island"),
-            new Dropdown("name", "Name of warp", $warpsName)
-        ]);
+        if(count($warpOptions) === 0) {
+            $this->getPlayer()->sendMessage("§cYour island has no warp");
+            return;
+        }
 
-        if($response !== null) {
-            $warpName = $response->getAll()["name"];
-            $warp = array_values($warpsName)[$warpName];
+        $warpChoose = yield from $this->menu(
+            "Teleport warp",
+            $island->getIslandName(),
+            $warpOptions
+        );
 
-
-            $isRemoved = $island->removeWarp($warp);
-            $message = $isRemoved ? "§aWarp " . $warp . " has been removed" : "§cWarp " . $warp . " not found";
-
-            FastForm::simpleNotice($this->getPlayer(), $message, function () use ($island) {
+        if(!is_null($warpChoose)) {
+            FastForm::question($this->getPlayer(), "Confirm", "Remove warp " . $warps[$warpChoose]->getWarpName() . "?", "Yes", "No", function(bool $accept) use ($island, $warps, $warpChoose) {
+                if($accept) {
+                    $island->removeWarp($warps[$warpChoose]->getWarpName(), true);
+                    FastForm::simpleNotice($this->getPlayer(), "Warp " . $warps[$warpChoose]->getWarpName() . " has been removed", function () use ($island) {
+                        Await::g2c($this->warps($island));
+                    });
+                    return;
+                }
                 Await::g2c($this->warps($island));
             });
             return;
@@ -214,7 +228,16 @@ class SkyblockForm extends AsyncForm {
                 }
                 $spawn = $islandTarget->getIslandSpawn();
                 $this->getPlayer()->teleport($spawn);
-                $this->getPlayer()->sendMessage("§aTeleported to " . $islandTarget->getIslandName());
+                $islandInfo = "Teleported to island " . $islandTarget->getIslandName() . "\n";
+                $islandInfo .= "Island: " . $islandTarget->getIslandName() . "\n";
+                $islandInfo .= "Owner: " . $islandTarget->getPlayer() . "\n";
+                $islandInfo .= "Members: " . implode(", ", $islandTarget->getMembers()) . "\n";
+                $islandInfo .= "Locked: " . "No" . "\n"; //Because it's not locked
+                $islandInfo .= "Warps: " . implode(", ", $islandTarget->getIslandWarps()) . "\n";
+                $islandInfo .= "Created: " . $islandTarget->getDateCreated() . "\n";
+                $islandInfo .= "Level: " . $islandTarget->getIslandLevel()->getLevelInt() . "\n";
+
+                FastForm::simpleNotice($this->getPlayer(), $islandInfo);
             });
             return;
         }
@@ -267,6 +290,7 @@ class SkyblockForm extends AsyncForm {
 
     public function manager(Island $island) : Generator {
         $menuOptions = [
+            new MenuOption("Information"),
             new MenuOption("Invite"),
             new MenuOption("Kick"),
             new MenuOption("Lock"),
@@ -280,20 +304,67 @@ class SkyblockForm extends AsyncForm {
         );
 
         if($menuChoose === 0) {
-            yield from $this->inviteVisit($island);
+            yield from $this->information($island);
         }
 
         if($menuChoose === 1) {
-            yield from $this->kick($island);
+            yield from $this->inviteVisit($island);
         }
 
         if($menuChoose === 2) {
-            yield from $this->lock($island);
+            yield from $this->kick($island);
         }
 
         if($menuChoose === 3) {
+            yield from $this->lock($island);
+        }
+
+        if($menuChoose === 4) {
             yield from $this->members($island);
         }
+    }
+
+    public function information(Island $island) : Generator {
+
+        $warpsName = array_map(function(Warp $warp) {
+            return $warp->getWarpName();
+        }, $island->getIslandWarps());
+        $name = $island->getIslandName();
+        $isLocked = $island->isLocked();
+
+        $elements = [
+            new Input("name", "Name of island", $name, $name),
+            new Label("owner", "Owner: " . $island->getPlayer()),
+            new Label("members", "Members: " . implode(", ", $island->getMembers())),
+            new Toggle("lock", "Lock", $isLocked),
+            new Label("warps", "Warps: " . implode(", ", $warpsName)),
+            new Label("created", "Created: " . $island->getDateCreated()),
+        ];
+
+        /** @var CustomFormResponse|null $response*/
+        $response = yield from $this->custom("Information", $elements);
+        if($response !== null) {
+            $data = $response->getAll();
+            $name = $data["name"];
+            $locked = $data["lock"];
+            if($name === "") {
+                FastForm::simpleNotice($this->getPlayer(), "§cName of island cannot be empty", function () use ($island) {
+                    Await::g2c($this->information($island));
+                });
+                return;
+            }
+
+            if($name !== $island->getIslandName() or $isLocked !== $locked) {
+                $island->setIslandName($name);
+                $island->setLocked($locked);
+                $island->save();
+                FastForm::simpleNotice($this->getPlayer(), "Island has been updated", function () use ($island) {
+                    Await::g2c($this->information($island));
+                });
+            }
+            return;
+        }
+        yield from $this->manager($island);
     }
 
     public function members(Island $island) : Generator {
@@ -321,14 +392,17 @@ class SkyblockForm extends AsyncForm {
     }
 
     public function addMember(Island $island) : Generator {
-        $members = $island->getMembers();
-        $membersName = array_map(function(string $member) {
-            return $member;
-        }, $members);
+        $playersOnline = Server::getInstance()->getOnlinePlayers();
+
+        $membersName = array_map(function(Player $player) {
+            return $player->getName();
+        }, $playersOnline);
+
+        unset($membersName[$this->getPlayer()->getName()]);
 
         $response = yield from $this->custom("Members", [
-            new Label("label", "Members of your island"),
-            new Dropdown("name", "Name of player", $membersName)
+            new Label("label", "add member of your island"),
+            new Dropdown("name", "Players online", $membersName)
         ]);
 
         if($response !== null) {
@@ -339,17 +413,15 @@ class SkyblockForm extends AsyncForm {
                 $this->getPlayer()->sendMessage("§cPlayer is online");
                 return;
             }
-            (new InvitedForm($player,
-                "Player " . $this->getPlayer()->getName() . " invited you to join island " . $island->getIslandName(),
-                $island,
-                function(bool $accept) use ($player, $island) {
-                    if($accept) {
-                        $island->addMember($player->getName());
-                        $this->getPlayer()->sendMessage("§aPlayer accepted");
-                    } else {
-                        $this->getPlayer()->sendMessage("§cPlayer denied");
-                    }
-                }))->send();
+            FastForm::question($player, "Invite", "Player " . $this->getPlayer()->getName() . " invited you to join island " . $island->getIslandName(), "Accept", "Deny", function(bool $accept) use ($player, $island) {
+                if($accept) {
+                    $island->addMember($player->getName());
+                    $this->getPlayer()->sendMessage("§aPlayer " . $player->getName() . " has been added");
+                    $player->sendMessage("You have been added to island " . $island->getIslandName() . " by " . $this->getPlayer()->getName());
+                } else {
+                    $this->getPlayer()->sendMessage("§cPlayer denied");
+                }
+            });
         }
         yield from $this->members($island);
     }
@@ -360,6 +432,10 @@ class SkyblockForm extends AsyncForm {
             return $member;
         }, $members);
 
+        if(isset($membersName[$this->getPlayer()->getName()])) {
+            unset($membersName[$this->getPlayer()->getName()]);
+        }
+
         $response = yield from $this->custom("Members", [
             new Label("label", "Members of your island"),
             new Dropdown("name", "Name of player", $membersName)
@@ -369,11 +445,18 @@ class SkyblockForm extends AsyncForm {
             $playerName = $response->getAll()["name"];
             $player = array_values($membersName)[$playerName];
 
-            $island->removeMember($player);
-            FastForm::simpleNotice($this->getPlayer(), "Player " . $player . " has been removed", function () use ($island) {
-                Await::g2c($this->members($island));
-            });
-            return;
+            if($playerName == "") {
+                yield from $this->members($island);
+                return;
+            }
+
+            if($island->hasMember($player)) {
+                $island->removeMember($player);
+                FastForm::simpleNotice($this->getPlayer(), "Player " . $player . " has been removed", function () use ($island) {
+                    Await::g2c($this->members($island));
+                });
+                return;
+            }
         }
         yield from $this->members($island);
     }
@@ -420,8 +503,14 @@ class SkyblockForm extends AsyncForm {
                         return;
                     }
                     $player->teleport($island->getIslandSpawn());
-                    $player->sendMessage("§cYou have been kicked from island " . $island->getIslandName());
-                    FastForm::simpleNotice($this->getPlayer(), "Player " . $player->getName() . " has been kicked", function () use ($island) {
+                    FastForm::question($this->getPlayer(), "Confirm", "Kick player " . $player->getName() . "?", "Yes", "No", function(bool $accept) use ($player, $island) {
+                        if($accept) {
+                            $island->removeMember($player->getName());
+                            FastForm::simpleNotice($this->getPlayer(), "Player " . $player->getName() . " has been kicked", function () use ($island) {
+                                Await::g2c($this->manager($island));
+                            });
+                            return;
+                        }
                         Await::g2c($this->manager($island));
                     });
                 });
@@ -450,17 +539,14 @@ class SkyblockForm extends AsyncForm {
                 $this->getPlayer()->sendMessage("§cPlayer is online");
                 return;
             }
-            (new InvitedForm($player,
-                "Player " . $this->getPlayer()->getName() . " invited you to visit island " . $island->getIslandName(),
-                $island,
-                function(bool $accept) use ($player, $island) {
-                    if($accept) {
-                        $player->teleport($island->getIslandSpawn());
-                        $this->getPlayer()->sendMessage("§aPlayer accepted");
-                    } else {
-                        $this->getPlayer()->sendMessage("§cPlayer denied");
-                    }
-                }))->send();
+            FastForm::question($player, "Invite", "Player " . $this->getPlayer()->getName() . " invited you to teleport to island " . $island->getIslandName(), "Accept", "Deny", function(bool $accept) use ($player, $island) {
+                if($accept) {
+                    $player->teleport($island->getIslandSpawnPosition());
+                    $this->getPlayer()->sendMessage("§aPlayer accepted");
+                } else {
+                    $this->getPlayer()->sendMessage("§cPlayer denied");
+                }
+            });
         }
     }
 }

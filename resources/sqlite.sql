@@ -17,8 +17,7 @@ SELECT * FROM az_skyblock;
 -- # { update
 -- #      :username string
 -- #      :data string
--- #      :date_created string
-UPDATE az_skyblock SET data=:data, date_created=:date_created WHERE username = :username;
+UPDATE az_skyblock SET data=:data WHERE username = :username;
 -- # }
 -- # { insert
 -- #      :username string

@@ -31,6 +31,8 @@ class Island {
 
     private bool $islandLocked;
 
+    private string $dateCreated;
+
 
     public function __construct(string $player, string $islandName, Level $islandLevel, string $islandMembers, Vector3 $islandSpawn, array $islandWarps, bool $islandLocked) {
         $this->player = $player;
@@ -50,6 +52,14 @@ class Island {
         return $this->islandName;
     }
 
+    public function getDateCreated() : string {
+        return $this->dateCreated;
+    }
+
+    public function setDateCreated(string $dateCreated) : void {
+        $this->dateCreated = $dateCreated;
+    }
+
     public function getIslandLevel() : Level {
         return $this->islandLevel;
     }
@@ -60,6 +70,10 @@ class Island {
 
     public function getIslandSpawn() : Vector3 {
         return $this->islandSpawn;
+    }
+
+    public function getIslandSpawnPosition() : Position {
+        return new Position($this->islandSpawn->getX(), $this->islandSpawn->getY(), $this->islandSpawn->getZ(), WorldUtils::getSkyBlockWorld());
     }
 
     /**
@@ -97,7 +111,7 @@ class Island {
         $this->islandLocked = $islandLocked;
     }
 
-    public function addWarp(string $warpName, Vector3 $warpPosition) : bool {
+    public function addWarp(string $warpName, Vector3 $warpPosition, bool $save = false) : bool {
         $warp = new Warp($warpName, $warpPosition);
 
         if($this->hasWarp($warpName)) {
@@ -111,10 +125,14 @@ class Island {
         $event->call();
         $this->islandWarps[] = $warp;
 
+        if($save) {
+            $this->save();
+        }
+
         return true;
     }
 
-    public function removeWarp(string $warpName) : bool {
+    public function removeWarp(string $warpName, bool $save = false) : bool {
         $warp = $this->getWarp($warpName);
 
         if(is_null($warp)) {
@@ -131,6 +149,11 @@ class Island {
                 unset($this->islandWarps[$key]);
             }
         }
+
+        if($save) {
+            $this->save();
+        }
+
         return true;
     }
 

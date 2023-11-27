@@ -61,8 +61,8 @@ class SQLiteProvider {
         ]);
 
         if(!empty($result)) {
-            Debug::dumpArray($result);
             $island = Island::fromArray(json_decode($result[0]["data"], true));
+            $island->setDateCreated($result[0]["date_created"]);
             $this->handleClosure($closure, $island);
             return;
         }
@@ -74,7 +74,9 @@ class SQLiteProvider {
 
         $islands = [];
         foreach($result as $data) {
-            $islands[] = Island::fromArray(json_decode($data["data"], true));
+            $island = Island::fromArray(json_decode($data["data"], true));
+            $island->setDateCreated($data["date_created"]);
+            $islands[] = $island;
         }
 
         $this->handleClosure($closure, $islands);
