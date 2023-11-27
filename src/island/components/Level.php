@@ -13,6 +13,16 @@ class Level {
         private int $exp
     ){}
 
+    public function addExp(int $exp) : void {
+        $this->exp += $exp;
+
+        $nextExp = $this->level->getNextExp();
+        if($this->exp >= $this->level->getNextExp() and $nextExp !== -1) {
+            $this->level = Levels::from($this->level->toLevel() + 1);
+            $this->exp = 0;
+        }
+    }
+
     public function getLevel() : Levels {
         return $this->level;
     }

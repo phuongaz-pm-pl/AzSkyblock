@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace phuongaz\azskyblock\handler;
 
+use phuongaz\azskyblock\AzSkyBlock;
+use phuongaz\azskyblock\form\SkyblockForm;
 use phuongaz\azskyblock\island\Island;
 use phuongaz\azskyblock\world\WorldUtils;
 use pocketmine\event\block\BlockBreakEvent;
@@ -11,18 +13,24 @@ use pocketmine\event\block\BlockPlaceEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerBucketEvent;
 use pocketmine\event\player\PlayerInteractEvent;
+use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\player\Player;
 use pocketmine\world\Position;
 use SOFe\AwaitGenerator\Await;
 
 class EventHandler implements Listener {
 
-//    public function onJoin(PlayerJoinEvent $event) :void {
-//        $player = $event->getPlayer();
-//        if(!$player->hasPlayedBefore()) {
-//            (new SkyblockForm($player))->send();
-//        }
-//    }
+    public function onJoin(PlayerJoinEvent $event) :void {
+        $player = $event->getPlayer();
+        $provider = AzSkyBlock::getInstance()->getProvider();
+        Await::g2c($provider->awaitGet($player->getName(), function(?Island $island) use ($player) {
+            if(is_null($island)) {
+                (new SkyblockForm($player))->send();
+                return;
+            }
+            $player->teleport($island->getIslandSpawnPosition());
+        }));
+    }
 
     public function onBreak(BlockBreakEvent $event) : void {
         $player = $event->getPlayer();
