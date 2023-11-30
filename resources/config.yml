@@ -14,6 +14,8 @@ start-items:
   - name: "sugar_cane"
     amount: 1
 
+language: en
+
 database:
   # The database type. "sqlite" and "mysql" are supported.
   type: sqlite

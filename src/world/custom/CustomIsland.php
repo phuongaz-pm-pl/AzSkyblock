@@ -200,13 +200,12 @@ class CustomIsland {
                                 $chunkZ = $vector->getFloorZ() >> Chunk::COORD_BIT_SIZE;
                                 $world->orderChunkPopulation($chunkX, $chunkZ, null)->onCompletion(function(Chunk $chunk) use ($block, $vector, $world) {
                                     $world->setBlockAt($vector->getFloorX(), $vector->getFloorY(), $vector->getFloorZ(), $block);
-                                }, function(\Throwable $error){
-                                    Debug::dump($error->getMessage());
-                                });
+                                }, fn() => null);
 
                                 if($block instanceof Chest) {
                                     $chests[] = $world->getBlockAt($vector->getFloorX(), $vector->getFloorY(), $vector->getFloorZ());
                                 }
+
                             } catch (InvalidArgumentException $exception) {
                                 Debug::dump("Invalid block at " . $vector->getFloorX() . " " . $vector->getFloorY() . " " . $vector->getFloorZ());
                             }

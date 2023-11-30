@@ -18,18 +18,14 @@ class SQLiteProvider {
     const GET = "azskyblock_island.select";
     const GET_ALL = "azskyblock_island.selects";
     const COUNT = "azskyblock_island.count";
-
     public function __construct(
         private DataConnector $connector
     ) {
         $this->connector->executeGeneric(self::INIT);
     }
-
     public function getConnector() : DataConnector {
         return $this->connector;
     }
-
-
     public function awaitCreate(string $player, Island $island, ?Closure $closure = null) : Generator {
         yield from $this->connector->asyncInsert(self::CREATE, [
             "username" => $player,
@@ -45,7 +41,6 @@ class SQLiteProvider {
         ]);
         $this->handleClosure($closure, null);
     }
-
     public function awaitUpdate(string $player, Island $island, ?Closure $closure = null) : Generator {
         yield from $this->connector->asyncChange(self::UPDATE, [
             "username" => $player,
@@ -53,7 +48,6 @@ class SQLiteProvider {
         ]);
         $this->handleClosure($closure, null);
     }
-
     public function awaitGet(string $player, ?Closure $closure = null) : Generator {
         $result = yield from $this->connector->asyncSelect(self::GET, [
             "username" => $player
@@ -67,7 +61,6 @@ class SQLiteProvider {
         }
         $this->handleClosure($closure, null);
     }
-
     public function awaitGetAll(?Closure $closure = null) : Generator {
         $result = yield from $this->connector->asyncSelect(self::GET_ALL);
 
@@ -80,7 +73,6 @@ class SQLiteProvider {
 
         $this->handleClosure($closure, $islands);
     }
-
     public function getLastIsland(?Closure $closure = null) : Generator {
         $result = yield from $this->connector->asyncSelect(self::GET_ALL);
         $islands = [];
@@ -96,7 +88,6 @@ class SQLiteProvider {
         $result = yield from $this->connector->asyncSelect(self::COUNT);
         $this->handleClosure($closure, $result[0]["COUNT(*)"]);
     }
-
     private function handleClosure(?Closure $closure, $result) : void {
         if($closure !== null) {
             $closure($result);

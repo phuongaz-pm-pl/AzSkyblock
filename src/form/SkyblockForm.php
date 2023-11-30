@@ -17,6 +17,7 @@ use phuongaz\azskyblock\AzSkyBlock;
 use phuongaz\azskyblock\island\components\Warp;
 use phuongaz\azskyblock\island\Island;
 use phuongaz\azskyblock\utils\IslandSettings;
+use phuongaz\azskyblock\utils\LanguageUtils;
 use phuongaz\azskyblock\world\custom\CustomIsland;
 use phuongaz\azskyblock\world\custom\IslandPool;
 use phuongaz\azskyblock\world\WorldUtils;
@@ -48,15 +49,15 @@ class SkyblockForm extends AsyncForm {
     private function handleMenuOptions(Island $island): void {
         Await::f2c(function() use ($island) {
             $menuOptions = [
-                new MenuOption("Go to island"),
-                new MenuOption("Teleport"),
-                new MenuOption("Manager"),
-                new MenuOption("Warps")
+                new MenuOption(LanguageUtils::translate("menu.main.home")),
+                new MenuOption(LanguageUtils::translate("menu.main.teleport")),
+                new MenuOption(LanguageUtils::translate("menu.main.manager")),
+                new MenuOption(LanguageUtils::translate("menu.main.warp"))
             ];
 
             $menuChoose = yield from $this->menu(
-                "Skyblock",
-                $island->getIslandName(),
+                LanguageUtils::translate("menu.main.title"),
+                LanguageUtils::translate("menu.main.conent", ["island" => $island->getIslandName()]),
                 $menuOptions
             );
 

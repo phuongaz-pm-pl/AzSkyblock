@@ -17,7 +17,6 @@ final class Warp {
     public function getWarpName() : string {
         return $this->warpName;
     }
-
     public function getWarpPosition() : Position {
         $world = WorldUtils::getSkyBlockWorld();
         return new Position(
@@ -27,11 +26,9 @@ final class Warp {
             $world
         );
     }
-
     public function setWarpName(string $warpName) : void {
         $this->warpName = $warpName;
     }
-
     public static function fromArray(array $array) : Warp {
         return new Warp(
             $array["warp_name"],

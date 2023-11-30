@@ -12,8 +12,7 @@ abstract class IslandEvent extends Event {
     public function __construct(
         private Island $island
     ){}
-
-    public function getIsland() : Island {
+   public function getIsland() : Island {
         return $this->island;
     }
 }
