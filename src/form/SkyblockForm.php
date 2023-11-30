@@ -57,7 +57,7 @@ class SkyblockForm extends AsyncForm {
 
             $menuChoose = yield from $this->menu(
                 LanguageUtils::translate("menu.main.title"),
-                LanguageUtils::translate("menu.main.conent", ["island" => $island->getIslandName()]),
+                LanguageUtils::translate("menu.main.content", ["island" => $island->getIslandName()]),
                 $menuOptions
             );
 
@@ -111,30 +111,32 @@ class SkyblockForm extends AsyncForm {
 
     public function createWarp(Island $island) : Generator {
         $elements = [
-            new Input("name", "Name of warp"),
+            new Input("name", LanguageUtils::translate("menu.warp.input")),
         ];
 
         /** @var CustomFormResponse|null $response*/
-        $response = yield from $this->custom("Create warp", $elements);
+        $response = yield from $this->custom(LanguageUtils::translate("menu.warp.title"), $elements);
         if($response !== null) {
             $data = $response->getAll();
             $name = $data["name"];
             $player = $this->getPlayer();
             if($name === "") {
-                FastForm::simpleNotice($player, "§cName of warp cannot be empty", function () use ($island) {
+                FastForm::simpleNotice($player, LanguageUtils::translate("menu.warp.create.empty"), function () use ($island) {
                     Await::g2c($this->createWarp($island));
                 });
                 return;
             }
 
             if(!$player->getWorld()->getFolderName() != WorldUtils::getSkyBlockWorld()->getFolderName()) {
-                $this->getPlayer()->sendMessage("§cYou must be in skyblock world");
+                $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.warp.create.must.in.world"));
                 return;
             }
 
             $isAdded = $island->addWarp($name, $this->getPlayer()->getPosition()->asVector3(), true);
 
-            $message = $isAdded ? "§aWarp " . $name . " has been created" : "§cWarp " . $name . " already exists";
+            $message = $isAdded ?
+                LanguageUtils::translate("menu.warp.create.success", ["warp" => $name]) :
+                LanguageUtils::translate("menu.warp.create.exists", ["warp" => $name]);
 
             FastForm::simpleNotice($this->getPlayer(), $message, function () use ($island) {
                 Await::g2c($this->warps($island));
@@ -152,21 +154,24 @@ class SkyblockForm extends AsyncForm {
         }, $warps);
 
         if(count($warpOptions) === 0) {
-            $this->getPlayer()->sendMessage("§cYour island has no warp");
+            $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.warp.remove.empty"));
             return;
         }
 
         $warpChoose = yield from $this->menu(
-            "Teleport warp",
-            $island->getIslandName(),
+            LanguageUtils::translate("menu.warp.remove.title"),
+            LanguageUtils::translate("menu.warp.remove.content", ["island" => $island->getIslandName()]),
             $warpOptions
         );
 
         if(!is_null($warpChoose)) {
-            FastForm::question($this->getPlayer(), "Confirm", "Remove warp " . $warps[$warpChoose]->getWarpName() . "?", "Yes", "No", function(bool $accept) use ($island, $warps, $warpChoose) {
+            FastForm::question($this->getPlayer(), LanguageUtils::translate("menu.warp.remove.confirm.title"),
+                LanguageUtils::translate("menu.warp.remove.confirm.content", ["warp" => $warps[$warpChoose]->getWarpName()]),
+                LanguageUtils::translate("menu.warp.remove.confirm.yes"), LanguageUtils::translate("menu.warp.remove.confirm.no"),
+                function(bool $accept) use ($island, $warps, $warpChoose) {
                 if($accept) {
                     $island->removeWarp($warps[$warpChoose]->getWarpName(), true);
-                    FastForm::simpleNotice($this->getPlayer(), "Warp " . $warps[$warpChoose]->getWarpName() . " has been removed", function () use ($island) {
+                    FastForm::simpleNotice($this->getPlayer(), LanguageUtils::translate("menu.warp.remove.success", ["warp" => $warps[$warpChoose]->getWarpName()]), function () use ($island) {
                         Await::g2c($this->warps($island));
                     });
                     return;
@@ -186,20 +191,20 @@ class SkyblockForm extends AsyncForm {
         }, $warps);
 
         if(count($warpOptions) === 0) {
-            $this->getPlayer()->sendMessage("§cYour island has no warp");
+            $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.warp.teleport.empty"));
             return;
         }
 
         $warpChoose = yield from $this->menu(
-            "Teleport warp",
-            $island->getIslandName(),
+            LanguageUtils::translate("menu.warp.teleport.title"),
+            LanguageUtils::translate("menu.warp.teleport.conent", ["island" => $island->getIslandName()]),
             $warpOptions
         );
 
         if(!is_null($warpChoose)) {
             $warp = array_values($warps)[$warpChoose];
             $this->getPlayer()->teleport($warp->getWarpPosition());
-            $this->getPlayer()->sendMessage("§aTeleported to " . $warp->getWarpName());
+            $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.warp.teleport.success", ["warp" => $warp->getWarpName()]));
             return;
         }
         yield from $this->warps($island);
