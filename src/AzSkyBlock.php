@@ -7,7 +7,6 @@ namespace phuongaz\azskyblock;
 use phuongaz\azskyblock\command\BaseIslandCommand;
 use phuongaz\azskyblock\handler\EventHandler;
 use phuongaz\azskyblock\provider\SQLiteProvider;
-use phuongaz\azskyblock\utils\LanguageUtils;
 use phuongaz\azskyblock\world\custom\IslandPool;
 use phuongaz\azskyblock\world\WorldUtils;
 use pocketmine\lang\Language;

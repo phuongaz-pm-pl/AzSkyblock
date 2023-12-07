@@ -9,6 +9,7 @@ use dktapps\pmforms\element\Toggle;
 use dktapps\pmforms\MenuOption;
 use faz\common\form\AsyncForm;
 use Generator;
+use phuongaz\azskyblock\utils\LanguageUtils;
 use phuongaz\azskyblock\world\custom\CustomIsland;
 use phuongaz\azskyblock\world\custom\CustomPool;
 use pocketmine\player\Player;
@@ -26,29 +27,29 @@ class CustomForm extends AsyncForm {
 
     public function create(): \Generator {
         $elements = [
-            new Input("name", "Name of island"),
-            new Input("description", "Description of island")
+            new Input("name", LanguageUtils::translate("menu.custom.create.name")),
+            new Input("description", LanguageUtils::translate("menu.custom.create.description")),
         ];
 
-        $response = yield from $this->custom("Create island", $elements);
+        $response = yield from $this->custom(LanguageUtils::translate("menu.custom.create.title"), $elements);
         if ($response !== null) {
             $data = $response->getAll();
             $island = new CustomIsland($data["name"], $data["description"], "", $this->getPlayer()->getWorld());
             CustomPool::add($island);
-            $this->sendMessage("Created island {$data['name']}");
+            $this->sendMessage(LanguageUtils::translate("menu.custom.create.success", [$data["name"]]));
         }
     }
 
     public function edit(CustomIsland $island): \Generator {
         $elements = [
-            new Input("name", "Name of island", $island->getName(), $island->getName()),
-            new Input("description", "Description of island", $island->getDescription(), $island->getDescription()),
+            new Input("name", LanguageUtils::translate("menu.custom.edit.name"), $island->getName(), $island->getName()),
+            new Input("description", LanguageUtils::translate("menu.custom.edit.description"), $island->getDescription(), $island->getDescription()),
             new Toggle("spawn", $this->getToggleName($island->getSpawnPosition(), "spawn"), $island->getSpawnPosition() !== null),
             new Toggle("position1", $this->getToggleName($island->getPosition1(), "pos1"), $island->getPosition1() !== null),
             new Toggle("position2", $this->getToggleName($island->getPosition2(), "pos2"), $island->getPosition2() !== null),
         ];
 
-        $response = yield from $this->custom("Edit island", $elements);
+        $response = yield from $this->custom(LanguageUtils::translate("menu.custom.edit.title"), $elements);
         if ($response !== null) {
             $this->processResponse($island, $response->getAll());
         }
@@ -65,13 +66,13 @@ class CustomForm extends AsyncForm {
         $island->setDescription($description);
         $this->sendMessage("Edited island $name");
 
-        $this->handleToggleAction($island, $response, "spawn", "Set spawn position", 'setSpawnPosition', 'getSpawnPosition');
-        $this->handleToggleAction($island, $response, "position1", "Set position 1", 'setPosition1', 'getPosition1');
-        $this->handleToggleAction($island, $response, "position2", "Set position 2", 'setPosition2', 'getPosition2');
+        $this->handleToggleAction($island, $response, "spawn", LanguageUtils::translate("set.spawn.position"), 'setSpawnPosition', 'getSpawnPosition');
+        $this->handleToggleAction($island, $response, "position1", LanguageUtils::translate("set.position.1"), 'setPosition1', 'getPosition1');
+        $this->handleToggleAction($island, $response, "position2", LanguageUtils::translate("set.position.2"), 'setPosition2', 'getPosition2');
 
         if ($island->getSpawnPosition() !== null && $island->getPosition1() !== null && $island->getPosition2() !== null) {
             $island->save();
-            $this->getPlayer()->sendMessage("Saved island $name");
+            $this->getPlayer()->sendMessage(LanguageUtils::translate("save.island"));
         }
 
         CustomPool::reload($island);
@@ -93,7 +94,7 @@ class CustomForm extends AsyncForm {
         }
 
         $elements = array_map(fn($island) => new MenuOption($island->getName()), $islands);
-        $response = yield from $this->menu("Select island", "choose one!", $elements);
+        $response = yield from $this->menu(LanguageUtils::translate("select.island"), LanguageUtils::translate("select.island.content"), $elements);
 
         if ($response !== null) {
             $selectedIsland = array_values($islands)[$response];
