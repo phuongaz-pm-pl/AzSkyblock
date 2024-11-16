@@ -170,9 +170,8 @@ class CustomIsland {
         Await::f2c(function() use ($closure){
 
             $provider = AzSkyBlock::getInstance()->getProvider();
-            yield from $provider->awaitCount(function(int $distance) use ($closure){
+            yield $provider->awaitCount(function(int $distance) use ($closure){
 
-                Debug::spaceDump("Generating island of $distance");
                 $blocks = $this->getBlocks();
                 $world = WorldUtils::getSkyBlockWorld();
                 $chests = [];
@@ -254,17 +253,14 @@ class CustomIsland {
 
                 $startX = ($distance * $maxSize + $pos1->getX()) - ($initSize / 2);
                 $startZ = ($distance * $maxSize + $pos1->getZ()) - ($initSize / 2) ;
-                Debug::spaceDump("Start: $startX $startZ");
 
                 $endX = ($distance * $maxSize + $pos2->getX()) + ($initSize / 2);
                 $endZ = ($distance * $maxSize + $pos2->getZ()) + ($initSize / 2);
-                Debug::spaceDump("End: $endX $endZ");
+
 
                 $maxIslandArea = new Position($endX, $pos1->getY(), $endZ, $world);
                 $minIslandArea = new Position($startX, $pos1->getY(), $startZ, $world);
                 $spawn = new Position($distance * $maxSize + $this->spawnPosition->getX(), $this->spawnPosition->getY(), $distance * $maxSize + $this->spawnPosition->getZ(), $world);
-
-                Debug::spaceDump("Spawn: " . $spawn->x . " " . $spawn->z);
 
                 $area = new Area($spawn, $minIslandArea, $maxIslandArea);
 
