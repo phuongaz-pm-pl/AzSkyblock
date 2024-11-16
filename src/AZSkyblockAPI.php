@@ -17,17 +17,6 @@ use SOFe\AwaitGenerator\Await;
 
 class AZSkyblockAPI {
 
-
-    public static function getOrLoadIslandFromPos(Position $position) :Promise {
-        $resolver = new PromiseResolver();
-        WorldUtils::getIslandFromPos($position, function(?Island $island) use ($resolver) {
-            $resolver->resolve($island);
-        });
-
-        return $resolver->getPromise();
-    }
-
-
     public static function getIslandFromPos(Position $position) : ?Island {
         $world = IslandSettings::getConfig()->get("world");
 

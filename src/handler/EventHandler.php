@@ -67,7 +67,7 @@ class EventHandler implements Listener {
     }
 
     public function onIslandMemberChange(IslandMemberEvent $event) {
-        Cache::loadIsland($event->getIsland()->getPlayer());
+        Cache::reloadIsland($event->getIsland()->getPlayer());
     }
 
     private function handleCheck(Position $position, Player $player, $event) :void {
