@@ -7,6 +7,7 @@ namespace phuongaz\azskyblock\world\custom;
 use faz\common\Debug;
 use InvalidArgumentException;
 use phuongaz\azskyblock\AzSkyBlock;
+use phuongaz\azskyblock\island\components\Area;
 use phuongaz\azskyblock\utils\IslandSettings;
 use phuongaz\azskyblock\utils\Util;
 use phuongaz\azskyblock\world\WorldUtils;
@@ -16,6 +17,7 @@ use pocketmine\block\RuntimeBlockStateRegistry;
 use pocketmine\math\Vector3;
 use pocketmine\Server;
 use pocketmine\world\format\Chunk;
+use pocketmine\world\Position;
 use pocketmine\world\World;
 use SOFe\AwaitGenerator\Await;
 
@@ -166,14 +168,18 @@ class CustomIsland {
 
     public function generate(?\Closure $closure = null) : void {
         Await::f2c(function() use ($closure){
+
             $provider = AzSkyBlock::getInstance()->getProvider();
             yield from $provider->awaitCount(function(int $distance) use ($closure){
+
+                Debug::spaceDump("Generating island of $distance");
                 $blocks = $this->getBlocks();
                 $world = WorldUtils::getSkyBlockWorld();
+                $chests = [];
+                $chestTiles = [];
 
                 $pos1 = $this->position1;
                 $pos2 = $this->position2;
-
 
                 $minX = min($pos1->getFloorX(), $pos2->getFloorX());
                 $maxX = max($pos1->getFloorX(), $pos2->getFloorX());
@@ -183,19 +189,20 @@ class CustomIsland {
                 $maxZ = max($pos1->getFloorZ(), $pos2->getFloorZ());
 
                 $maxSize = IslandSettings::getMaxSize();
+                //10 is space between islands (10^2)
+                $initSize = $maxSize - 10;
                 $counter = 0;
 
-                $startItems = IslandSettings::getStartItems();
-                $chests = [];
+                $islandOffsetX = $distance * $maxSize;
+                $islandOffsetZ = $distance * $maxSize;
 
-                for ($x = $distance * $maxSize; $x <= $distance * $maxSize + ($maxX - $minX); ++$x) {
+                for ($x = $islandOffsetX; $x <= $islandOffsetX + ($maxX - $minX); $x++) {
                     for ($y = 15; $y <= 15 + ($maxY - $minY); ++$y) {
-                        for ($z = $distance * $maxSize; $z <= $distance * $maxSize + ($maxZ - $minZ); ++$z) {
+                        for ($z = $islandOffsetZ; $z <= $islandOffsetZ + ($maxZ - $minZ); $z++) {
                             $block = RuntimeBlockStateRegistry::getInstance()->fromStateId($blocks[$counter]["block"]);
                             try {
                                 $vector = $blocks[$counter]["vector"];
-                                $vector = $vector->add($distance * $maxSize, 0, $distance * $maxSize);
-
+                                $vector = $vector->add($islandOffsetX, 0, $islandOffsetZ);
                                 $chunkX = $vector->getFloorX() >> Chunk::COORD_BIT_SIZE;
                                 $chunkZ = $vector->getFloorZ() >> Chunk::COORD_BIT_SIZE;
                                 $world->orderChunkPopulation($chunkX, $chunkZ, null)->onCompletion(function(Chunk $chunk) use ($block, $vector, $world) {
@@ -205,7 +212,6 @@ class CustomIsland {
                                 if($block instanceof Chest) {
                                     $chests[] = $world->getBlockAt($vector->getFloorX(), $vector->getFloorY(), $vector->getFloorZ());
                                 }
-
                             } catch (InvalidArgumentException $exception) {
                                 Debug::dump("Invalid block at " . $vector->getFloorX() . " " . $vector->getFloorY() . " " . $vector->getFloorZ());
                             }
@@ -214,13 +220,8 @@ class CustomIsland {
                     }
                 }
 
-                $this->spawnPosition = new Vector3($distance * $maxSize + $this->spawnPosition->getX(), $this->spawnPosition->getY(), $distance * $maxSize + $this->spawnPosition->getZ());
-                $this->position1 = new Vector3($distance * $maxSize + $this->position1->getX(), $this->position1->getY(), $distance * $maxSize + $this->position1->getZ());
-                $this->position2 = new Vector3($distance * $maxSize + $this->position2->getX(), $this->position2->getY(), $distance * $maxSize + $this->position2->getZ());
-
                 $hasGiven = false;
-
-                $chestTiles = [];
+                $startItems = IslandSettings::getStartItems();
 
                 foreach($chests as $chest) {
                     $tile = $world->getTile($chest->getPosition());
@@ -251,9 +252,24 @@ class CustomIsland {
                     $hasGiven = true;
                 }
 
+                $startX = ($distance * $maxSize + $pos1->getX()) - ($initSize / 2);
+                $startZ = ($distance * $maxSize + $pos1->getZ()) - ($initSize / 2) ;
+                Debug::spaceDump("Start: $startX $startZ");
+
+                $endX = ($distance * $maxSize + $pos2->getX()) + ($initSize / 2);
+                $endZ = ($distance * $maxSize + $pos2->getZ()) + ($initSize / 2);
+                Debug::spaceDump("End: $endX $endZ");
+
+                $maxIslandArea = new Position($endX, $pos1->getY(), $endZ, $world);
+                $minIslandArea = new Position($startX, $pos1->getY(), $startZ, $world);
+                $spawn = new Position($distance * $maxSize + $this->spawnPosition->getX(), $this->spawnPosition->getY(), $distance * $maxSize + $this->spawnPosition->getZ(), $world);
+
+                Debug::spaceDump("Spawn: " . $spawn->x . " " . $spawn->z);
+
+                $area = new Area($spawn, $minIslandArea, $maxIslandArea);
 
                 if($closure !== null) {
-                    $closure($this->spawnPosition, $hasGiven);
+                    $closure($area, $hasGiven);
                 }
             });
         });

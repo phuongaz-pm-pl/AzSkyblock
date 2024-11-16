@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace phuongaz\azskyblock\island;
 
 use phuongaz\azskyblock\AzSkyBlock;
+use phuongaz\azskyblock\handler\island\IslandMemberEvent;
+use phuongaz\azskyblock\handler\island\IslandTeleportEvent;
 use phuongaz\azskyblock\handler\island\warp\IslandAddWarpEvent;
 use phuongaz\azskyblock\handler\island\warp\IslandRemoveWarpEvent;
+use phuongaz\azskyblock\island\components\Area;
 use phuongaz\azskyblock\island\components\Level;
 use phuongaz\azskyblock\island\components\types\Levels;
 use phuongaz\azskyblock\island\components\Warp;
@@ -24,7 +27,7 @@ class Island {
     private Level $islandLevel;
     private string $islandMembers;
 
-    private Vector3 $islandSpawn;
+    private Area $area;
 
     /** @var Warp[] $islandWarps */
     private array $islandWarps;
@@ -34,12 +37,12 @@ class Island {
     private string $dateCreated;
 
 
-    public function __construct(string $player, string $islandName, Level $islandLevel, string $islandMembers, Vector3 $islandSpawn, array $islandWarps, bool $islandLocked) {
+    public function __construct(string $player, string $islandName, Level $islandLevel, string $islandMembers, Area $area, array $islandWarps, bool $islandLocked) {
         $this->player = $player;
         $this->islandName = $islandName;
         $this->islandLevel = $islandLevel;
         $this->islandMembers = $islandMembers;
-        $this->islandSpawn = $islandSpawn;
+        $this->area = $area;
         $this->islandWarps = $islandWarps;
         $this->islandLocked = $islandLocked;
     }
@@ -68,12 +71,12 @@ class Island {
         return $this->islandMembers;
     }
 
-    public function getIslandSpawn() : Vector3 {
-        return $this->islandSpawn;
+    public function getIslandSpawn() : Position {
+        return $this->area->getSpawn();
     }
 
     public function getIslandSpawnPosition() : Position {
-        return new Position($this->islandSpawn->getX(), $this->islandSpawn->getY(), $this->islandSpawn->getZ(), WorldUtils::getSkyBlockWorld());
+        return $this->area->getSpawn();
     }
 
     /**
@@ -100,7 +103,7 @@ class Island {
     }
 
     public function setIslandSpawn(Position $islandSpawn) : void {
-        $this->islandSpawn = $islandSpawn;
+        $this->area->setSpawn($islandSpawn);
     }
 
     public function setIslandWarps(array $islandWarps) : void {
@@ -184,10 +187,20 @@ class Island {
     }
 
     public function addMember(string $member) : void {
+        $event = new IslandMemberEvent($member, IslandMemberEvent::ADD, $this);
+        if ($event->isCancelled()) {
+            return;
+        }
         $this->islandMembers .= "," . $member;
+        $event->call();
+        $this->save();
     }
 
     public function removeMember(string $member) : void {
+        $event = new IslandMemberEvent($member, IslandMemberEvent::REMOVE, $this);
+        if ($event->isCancelled()) {
+            return;
+        }
         $members = explode(",", $this->islandMembers);
         foreach ($members as $key => $m) {
             if ($m == $member) {
@@ -195,14 +208,14 @@ class Island {
             }
         }
         $this->islandMembers = implode(",", $members);
+        $event->call();
+        $this->save();
     }
 
     public function hasMember(string $member) : bool {
         $members = explode(",", $this->islandMembers);
-        foreach ($members as $m) {
-            if ($m == $member) {
-                return true;
-            }
+        if (in_array($member, $members)) {
+            return true;
         }
         return false;
     }
@@ -231,11 +244,12 @@ class Island {
         $this->islandLocked = $locked;
     }
 
+    public function getArea() : Area {
+        return $this->area;
+    }
+
     public function canEdit(Player $player) : bool {
-        if ($this->isOwner($player->getName())) {
-            return true;
-        }
-        if ($this->isMember($player->getName())) {
+        if ($this->isOwner($player->getName()) || $this->isMember($player->getName())) {
             return true;
         }
         return false;
@@ -261,25 +275,6 @@ class Island {
         return $players;
     }
 
-    public function isInIsland(Player $player) : bool {
-        $islandSize = IslandSettings::getMaxSize();
-        $spawn = $this->getIslandSpawn();
-        $x1 = $spawn->getFloorX() - $islandSize;
-        $x2 = $spawn->getFloorX() + $islandSize;
-        $z1 = $spawn->getFloorZ() - $islandSize;
-        $z2 = $spawn->getFloorZ() + $islandSize;
-
-        if($player->getWorld()->getFolderName() !== WorldUtils::getSkyBlockWorld()->getFolderName()) {
-            return false;
-        }
-
-        $playerPosition = $player->getPosition();
-        if ($playerPosition->getFloorX() >= $x1 && $playerPosition->getFloorX() <= $x2 && $playerPosition->getFloorZ() >= $z1 && $playerPosition->getFloorZ() <= $z2) {
-            return true;
-        }
-        return false;
-    }
-
     public static function fromArray(array $array) : Island {
         $islandWarps = [];
         foreach ($array["island_warps"] as $warp) {
@@ -290,10 +285,10 @@ class Island {
             $array["island_name"],
             Level::fromArray($array["island_level"]),
             $array["island_members"],
-            new Vector3(
-                $array["island_spawn_x"],
-                $array["island_spawn_y"],
-                $array["island_spawn_z"],
+            new Area(
+                new Position($array['area']["island_spawn_x"], $array['area']["island_spawn_y"], $array['area']["island_spawn_z"], WorldUtils::getSkyBlockWorld()),
+                new Position($array['area']["island_min_x"] - IslandSettings::getMaxSize(), 0, $array['area']["island_min_z"] - IslandSettings::getMaxSize(), WorldUtils::getSkyBlockWorld()),
+                new Position($array['area']["island_max_x"] + IslandSettings::getMaxSize(), 0, $array['area']["island_min_z"] + IslandSettings::getMaxSize(), WorldUtils::getSkyBlockWorld())
             ),
             $islandWarps,
             $array["island_locked"]
@@ -310,9 +305,15 @@ class Island {
             "island_name" => $this->islandName,
             "island_level" => $this->islandLevel->toArray(),
             "island_members" => $this->islandMembers,
-            "island_spawn_x" => $this->islandSpawn->getX(),
-            "island_spawn_y" => $this->islandSpawn->getY(),
-            "island_spawn_z" => $this->islandSpawn->getZ(),
+            "area" => [
+                "island_spawn_x" => $this->area->getSpawn()->getX(),
+                "island_spawn_y" => $this->area->getSpawn()->getY(),
+                "island_spawn_z" => $this->area->getSpawn()->getZ(),
+                "island_min_x" => $this->area->getMin()->getX(),
+                "island_min_z" => $this->area->getMin()->getZ(),
+                "island_max_x" => $this->area->getMax()->getX(),
+                "island_max_z" => $this->area->getMax()->getZ()
+            ],
             "island_spawn_world" => WorldUtils::getSkyBlockWorld()->getFolderName(),
             "island_warps" => $islandWarps,
             "island_locked" => $this->islandLocked
@@ -320,16 +321,16 @@ class Island {
     }
 
     public function teleportToIsland(Player $player) : void {
-        $player->teleport(new Position($this->islandSpawn->getX(), $this->islandSpawn->getY(), $this->islandSpawn->getZ(),  WorldUtils::getSkyBlockWorld()));
+        $player->teleport($this->getIslandSpawnPosition());
     }
 
-    public static function new(string $player, string $islandName, Vector3 $islandSpawn) : Island {
+    public static function new(string $player, string $islandName, Area $area) : Island {
         return new Island(
             $player,
             $islandName,
             new Level(Levels::LEVEL_1, 0),
             $player,
-            $islandSpawn,
+            $area,
             [],
             false
         );
@@ -338,5 +339,27 @@ class Island {
     public function save() : void {
         $provider = AzSkyBlock::getInstance()->getProvider();
         Await::g2c($provider->awaitUpdate($this->getPlayer(), $this));
+    }
+
+    /**
+     * @return array[Pos1: Position, Pos2: Position, Spawn: Position]
+    */
+    public function getIslandRange() : array {
+        return [
+            "Pos1" => $this->area->getMin(),
+            "Pos2" => $this->area->getMax(),
+            "Spawn" => $this->area->getSpawn()
+        ];
+    }
+
+    public function teleport(Player $player) : void {
+        $event = new IslandTeleportEvent($player->getName(), $this);
+        $event->call();
+
+        if($event->isCancelled()) {
+            return;
+        }
+
+        $this->teleportToIsland($player);
     }
 }

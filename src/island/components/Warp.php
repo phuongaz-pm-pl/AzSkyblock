@@ -8,15 +8,17 @@ use phuongaz\azskyblock\world\WorldUtils;
 use pocketmine\math\Vector3;
 use pocketmine\world\Position;
 
-final class Warp {
+class Warp {
 
     public function __construct(
         private string $warpName,
         private Vector3 $warpPosition
     ){}
+
     public function getWarpName() : string {
         return $this->warpName;
     }
+
     public function getWarpPosition() : Position {
         $world = WorldUtils::getSkyBlockWorld();
         return new Position(
@@ -26,9 +28,11 @@ final class Warp {
             $world
         );
     }
+
     public function setWarpName(string $warpName) : void {
         $this->warpName = $warpName;
     }
+
     public static function fromArray(array $array) : Warp {
         return new Warp(
             $array["warp_name"],
@@ -39,6 +43,7 @@ final class Warp {
             )
         );
     }
+
     public function toArray() : array {
         return [
             "warp_name" => $this->warpName,

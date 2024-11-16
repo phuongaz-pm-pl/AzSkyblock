@@ -23,11 +23,13 @@ class SQLiteProvider {
     ) {
         $this->connector->executeGeneric(self::INIT);
     }
+
     public function getConnector() : DataConnector {
         return $this->connector;
     }
+
     public function awaitCreate(string $player, Island $island, ?Closure $closure = null) : Generator {
-        yield from $this->connector->asyncInsert(self::CREATE, [
+        yield $this->connector->asyncInsert(self::CREATE, [
             "username" => $player,
             "data" => json_encode($island->toArray()),
             "date_created" => date("Y-m-d H:i:s")
@@ -36,18 +38,20 @@ class SQLiteProvider {
     }
 
     public function awaitDelete(string $player, ?Closure $closure = null) : Generator {
-        yield from $this->connector->asyncChange(self::DELETE, [
+        yield $this->connector->asyncChange(self::DELETE, [
             "username" => $player
         ]);
         $this->handleClosure($closure, null);
     }
+
     public function awaitUpdate(string $player, Island $island, ?Closure $closure = null) : Generator {
-        yield from $this->connector->asyncChange(self::UPDATE, [
+        yield $this->connector->asyncChange(self::UPDATE, [
             "username" => $player,
             "data" => json_encode($island->toArray())
         ]);
         $this->handleClosure($closure, null);
     }
+
     public function awaitGet(string $player, ?Closure $closure = null) : Generator {
         $result = yield from $this->connector->asyncSelect(self::GET, [
             "username" => $player
@@ -61,6 +65,7 @@ class SQLiteProvider {
         }
         $this->handleClosure($closure, null);
     }
+
     public function awaitGetAll(?Closure $closure = null) : Generator {
         $result = yield from $this->connector->asyncSelect(self::GET_ALL);
 
@@ -73,6 +78,7 @@ class SQLiteProvider {
 
         $this->handleClosure($closure, $islands);
     }
+
     public function getLastIsland(?Closure $closure = null) : Generator {
         $result = yield from $this->connector->asyncSelect(self::GET_ALL);
         $islands = [];

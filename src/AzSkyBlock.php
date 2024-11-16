@@ -35,7 +35,7 @@ class AzSkyBlock extends PluginBase {
         $this->generateDefaultIslands();
         $this->initLanguage();
         Server::getInstance()->getCommandMap()->register("AzSkyBlock", new BaseIslandCommand(
-            $this, "azskyblock", "AzSkyBlock command", ["azsb"]
+            $this, "azskyblock", "AzSkyBlock command", ["azsb", "sb", "skyblock"]
         ));
         WorldUtils::createWorld($this->getConfig()->get("world"));
         IslandPool::loads();
