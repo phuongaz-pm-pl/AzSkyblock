@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace phuongaz\azskyblock\island;
 
 use phuongaz\azskyblock\AzSkyBlock;
-use phuongaz\azskyblock\handler\island\IslandMemberEvent;
+use phuongaz\azskyblock\handler\island\member\IslandMemberEvent;
 use phuongaz\azskyblock\handler\island\IslandTeleportEvent;
 use phuongaz\azskyblock\handler\island\warp\IslandAddWarpEvent;
 use phuongaz\azskyblock\handler\island\warp\IslandRemoveWarpEvent;

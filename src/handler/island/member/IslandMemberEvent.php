@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace phuongaz\azskyblock\handler\island;
+namespace phuongaz\azskyblock\handler\island\member;
 
+use phuongaz\azskyblock\handler\island\IslandEvent;
 use phuongaz\azskyblock\island\Island;
-use pocketmine\event\Event;
 
 class IslandMemberEvent extends IslandEvent {
 
