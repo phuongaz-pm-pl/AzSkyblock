@@ -4,6 +4,8 @@ world: skyblock
 # The distance between the islands
 island-size: 250
 
+button-format: "&l&f⋆&0 %content% &f⋆"
+
 # If a player creates an island with an existing chest, the initial items will automatically be added to that chest!
 # If there are too many chests, the items will be randomly distributed among them.
 start-items:
@@ -14,7 +16,7 @@ start-items:
   - name: "sugar_cane"
     amount: 1
 
-language: eng
+language: vie
 
 database:
   # The database type. "sqlite" and "mysql" are supported.

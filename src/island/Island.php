@@ -192,8 +192,8 @@ class Island {
             return;
         }
         $this->islandMembers .= "," . $member;
-        $event->call();
         $this->save();
+        $event->call();
     }
 
     public function removeMember(string $member) : void {
@@ -208,8 +208,8 @@ class Island {
             }
         }
         $this->islandMembers = implode(",", $members);
-        $event->call();
         $this->save();
+        $event->call();
     }
 
     public function hasMember(string $member) : bool {
@@ -248,11 +248,11 @@ class Island {
         return $this->area;
     }
 
-    public function canEdit(Player $player) : bool {
-        if ($this->isOwner($player->getName()) || $this->isMember($player->getName())) {
-            return true;
+    public function canEdit(Player|string $player) : bool {
+        if($player instanceof Player) {
+            $player = $player->getName();
         }
-        return false;
+        return $this->isMember($player);
     }
 
     public function getPlayersInIsland() : array {
@@ -287,8 +287,8 @@ class Island {
             $array["island_members"],
             new Area(
                 new Position($array['area']["island_spawn_x"], $array['area']["island_spawn_y"], $array['area']["island_spawn_z"], WorldUtils::getSkyBlockWorld()),
-                new Position($array['area']["island_min_x"] - IslandSettings::getMaxSize(), 0, $array['area']["island_min_z"] - IslandSettings::getMaxSize(), WorldUtils::getSkyBlockWorld()),
-                new Position($array['area']["island_max_x"] + IslandSettings::getMaxSize(), 0, $array['area']["island_min_z"] + IslandSettings::getMaxSize(), WorldUtils::getSkyBlockWorld())
+                new Position($array['area']["island_min_x"], 0, $array['area']["island_min_z"], WorldUtils::getSkyBlockWorld()),
+                new Position($array['area']["island_max_x"], 0, $array['area']["island_max_z"], WorldUtils::getSkyBlockWorld())
             ),
             $islandWarps,
             $array["island_locked"]
@@ -339,17 +339,6 @@ class Island {
     public function save() : void {
         $provider = AzSkyBlock::getInstance()->getProvider();
         Await::g2c($provider->awaitUpdate($this->getPlayer(), $this));
-    }
-
-    /**
-     * @return array[Pos1: Position, Pos2: Position, Spawn: Position]
-    */
-    public function getIslandRange() : array {
-        return [
-            "Pos1" => $this->area->getMin(),
-            "Pos2" => $this->area->getMax(),
-            "Spawn" => $this->area->getSpawn()
-        ];
     }
 
     public function teleport(Player $player) : void {

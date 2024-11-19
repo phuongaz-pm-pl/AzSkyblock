@@ -33,6 +33,7 @@ class EventHandler implements Listener {
                 (new SkyblockForm($player))->send();
                 return;
             }
+            Cache::loadIsland($player->getName());
             $island->teleport($player);
         }));
     }
@@ -70,10 +71,14 @@ class EventHandler implements Listener {
         Cache::reloadIsland($event->getIsland()->getPlayer());
     }
 
-    private function handleCheck(Position $position, Player $player, $event) :void {
+    private function handleCheck(Position $position, Player $player, $event) : void {
+
+        $skyBlockWorld = WorldUtils::getSkyBlockWorld()->getFolderName();
+        if($position->getWorld()->getFolderName() !== $skyBlockWorld) return;
+
         $island = AZSkyblockAPI::getIslandFromPos($position);
 
-        if(!$island?->canEdit($player) || $island == null) {
+        if(!$island?->canEdit($player)) {
             $player->sendMessage("§cYou can't access this area!, you are not the owner or member of this island!");
             $event->cancel();
         }

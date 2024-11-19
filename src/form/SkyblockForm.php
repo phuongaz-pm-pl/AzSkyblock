@@ -19,6 +19,7 @@ use phuongaz\azskyblock\island\components\Area;
 use phuongaz\azskyblock\island\components\Warp;
 use phuongaz\azskyblock\island\Island;
 use phuongaz\azskyblock\utils\LanguageUtils;
+use phuongaz\azskyblock\utils\Util;
 use phuongaz\azskyblock\world\custom\CustomIsland;
 use phuongaz\azskyblock\world\custom\IslandPool;
 use phuongaz\azskyblock\world\WorldUtils;
@@ -49,10 +50,18 @@ class SkyblockForm extends AsyncForm {
     private function handleMenuOptions(Island $island): void {
         Await::f2c(function() use ($island) {
             $menuOptions = [
-                new MenuOption(LanguageUtils::translate("menu.main.home")),
-                new MenuOption(LanguageUtils::translate("menu.main.teleport")),
-                new MenuOption(LanguageUtils::translate("menu.main.manager")),
-                new MenuOption(LanguageUtils::translate("menu.main.warp"))
+                new MenuOption(Util::praseFormat(
+                    LanguageUtils::translate("menu.main.teleport")
+                )),
+                new MenuOption(
+                    Util::praseFormat(LanguageUtils::translate("menu.main.teleport"))
+                ),
+                new MenuOption(
+                    Util::praseFormat(LanguageUtils::translate("menu.main.manager"))
+                ),
+                new MenuOption(
+                    Util::praseFormat(LanguageUtils::translate("menu.main.warps"))
+                )
             ];
 
             $menuChoose = yield from $this->menu(
@@ -85,9 +94,15 @@ class SkyblockForm extends AsyncForm {
 
     public function warps(Island $island) : Generator {
         $menuOptions = [
-            new MenuOption(LanguageUtils::translate("menu.warps.create")),
-            new MenuOption(LanguageUtils::translate("menu.warps.remove")),
-            new MenuOption(LanguageUtils::translate("menu.warps.teleport"))
+            new MenuOption(
+                Util::praseFormat(LanguageUtils::translate("menu.warps.create"))
+            ),
+            new MenuOption(
+                Util::praseFormat(LanguageUtils::translate("menu.warps.remove"))
+            ),
+            new MenuOption(
+                Util::praseFormat(LanguageUtils::translate("menu.warps.teleport"))
+            )
         ];
 
         $menuChoose = yield from $this->menu(
@@ -150,7 +165,9 @@ class SkyblockForm extends AsyncForm {
         $warps = $island->getIslandWarps();
 
         $warpOptions = array_map(function(Warp $warp) {
-            return new MenuOption($warp->getWarpName());
+            return new MenuOption(
+                Util::praseFormat($warp->getWarpName())
+            );
         }, $warps);
 
         if(count($warpOptions) === 0) {
@@ -187,7 +204,9 @@ class SkyblockForm extends AsyncForm {
         $warps = $island->getIslandWarps();
 
         $warpOptions = array_map(function(Warp $warp) {
-            return new MenuOption($warp->getWarpName());
+            return new MenuOption(
+                Util::praseFormat($warp->getWarpName())
+            );
         }, $warps);
 
         if(count($warpOptions) === 0) {
@@ -257,7 +276,9 @@ class SkyblockForm extends AsyncForm {
         $menuOptions = [];
 
         foreach($islands as $island) {
-            $menuOptions[] = new MenuOption($island->getName());
+            $menuOptions[] = new MenuOption(
+                Util::praseFormat($island->getName())
+            );
         }
 
         $menuChoose = yield from $this->menu(
@@ -298,10 +319,18 @@ class SkyblockForm extends AsyncForm {
 
     public function manager(Island $island) : Generator {
         $menuOptions = [
-            new MenuOption(LanguageUtils::translate("menu.manager.info")),
-            new MenuOption(LanguageUtils::translate("menu.manager.invite")),
-            new MenuOption(LanguageUtils::translate("menu.manager.kick")),
-            new MenuOption(LanguageUtils::translate("menu.manager.members")),
+            new MenuOption(
+                Util::praseFormat(LanguageUtils::translate("menu.manager.info"))
+            ),
+            new MenuOption(
+                Util::praseFormat(LanguageUtils::translate("menu.manager.invite"))
+            ),
+            new MenuOption(
+                Util::praseFormat(LanguageUtils::translate("menu.manager.kick"))
+            ),
+            new MenuOption(
+                Util::praseFormat(LanguageUtils::translate("menu.manager.members"))
+            )
         ];
 
         $menuChoose = yield from $this->menu(
@@ -373,8 +402,12 @@ class SkyblockForm extends AsyncForm {
 
     public function members(Island $island) : Generator {
         $menuOptions = [
-            new MenuOption(LanguageUtils::translate("menu.manager.members.add")),
-            new MenuOption(LanguageUtils::translate("menu.manager.members.remove"))
+            new MenuOption(
+                Util::praseFormat(LanguageUtils::translate("menu.manager.members.add"))
+            ),
+            new MenuOption(
+                Util::praseFormat(LanguageUtils::translate("menu.manager.members.remove"))
+            )
         ];
 
         $menuChoose = yield from $this->menu(
@@ -411,19 +444,32 @@ class SkyblockForm extends AsyncForm {
 
         unset($membersName[$this->getPlayer()->getName()]);
 
+        $dropdown = (count($membersName) === 0) ?
+            new Label("label_2", LanguageUtils::translate("menu.manager.members.add.empty"))
+            :
+            new Dropdown("name", LanguageUtils::translate("menu.manager.members.add.input"), $membersName);
+
         $response = yield $this->custom(LanguageUtils::translate("menu.manager.members.add.title"), [
             new Label("label", LanguageUtils::translate("menu.manager.members.add.content")),
-            new Dropdown("name", LanguageUtils::translate("menu.manager.members.add.input"), $membersName)
+            $dropdown
         ]);
 
         if($response !== null) {
-            $playerName = $response->getAll()["name"];
-            $player = array_values($membersName)[$playerName];
 
-            if(($player = Server::getInstance()->getPlayerExact($player)) !== null) {
-                $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.manager.members.add.online", ["player" => $playerName]));
-                return;
+            if(count($membersName) == 0) {
+                $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.manager.members.add.empty"));
+                return yield $this->members($island);
             }
+
+            $playerIndex = $response->getAll()["name"];
+            $playerName = array_values($membersName)[$playerIndex];
+            $player = Server::getInstance()->getPlayerExact($playerName);
+
+            if($player == null) {
+                $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.manager.members.add.online", ["player" => $playerName]));
+                return yield $this->members($island);
+            }
+
             FastForm::question($player,
                 LanguageUtils::translate("menu.invite.title"),
                 LanguageUtils::translate("menu.invite.content", ["player" => $island->getPlayer(), "island" => $island->getIslandName()]),
@@ -432,13 +478,13 @@ class SkyblockForm extends AsyncForm {
                 if($accept) {
                     $island->addMember($player->getName());
                     $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.manager.members.add.success", ["player" => $player->getName()]));
-                    $player->sendMessage(LanguageUtils::translate("menu.manager.members.add.accept", ["player" => $player->getName()]));
+                    $player->sendMessage(LanguageUtils::translate("menu.manager.members.add.accept", ["player" => $this->getPlayer()->getName()]));
                 } else {
                     $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.manager.members.add.deny", ["player" => $player->getName()]));
                 }
             });
         }
-        yield $this->members($island);
+        //yield $this->members($island);
     }
 
     public function removeMembers(Island $island) : Generator {
@@ -533,13 +579,15 @@ class SkyblockForm extends AsyncForm {
         ]);
 
         if($response !== null) {
-            $playerName = $response->getAll()["name"];
-            $player = array_values($players)[$playerName];
+            $playerIndex = $response->getAll()["name"];
+            $playerName = array_values($players)[$playerIndex];
+            $player = Server::getInstance()->getPlayerExact($playerName);
 
-            if(($player = Server::getInstance()->getPlayerExact($player)) !== null) {
-                $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.manager.invite.online"));
+            if($player == null) {
+                $this->getPlayer()->sendMessage(LanguageUtils::translate("menu.manager.invite.online", ["player" => $playerName]));
                 return;
             }
+
             FastForm::question($player, LanguageUtils::translate("menu.invite.accept.title"),
                 LanguageUtils::translate("menu.invite.content", ["player" => $island->getPlayer(), "island" => $island->getIslandName()]),
                 LanguageUtils::translate("menu.invite.accept"), LanguageUtils::translate("menu.invite.deny"),

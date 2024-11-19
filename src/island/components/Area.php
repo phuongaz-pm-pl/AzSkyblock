@@ -37,4 +37,17 @@ class Area {
 
         return $pos->getX() >= $min->getX() && $pos->getX() <= $max->getX() && $pos->getZ() >= $min->getZ() && $pos->getZ() <= $max->getZ();
     }
+
+    public function getIslandRange() : array {
+        return [
+            "min" => [
+                "x" => $this->min->getX(),
+                "z" => $this->min->getZ()
+            ],
+            "max" => [
+                "x" => $this->max->getX(),
+                "z" => $this->max->getZ()
+            ]
+        ];
+    }
 }
