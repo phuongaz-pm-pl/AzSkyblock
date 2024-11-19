@@ -65,7 +65,7 @@ class AzSkyBlock extends PluginBase {
     private function generateDefaultIslands() : void {
         if(!is_dir($this->getDataFolder() . "islands/")) {
             mkdir($this->getDataFolder() . "islands/");
-            $this->saveResource("islands/basic-island.json");
+            $this->saveResource("islands/basic.json");
         }
     }
 }
